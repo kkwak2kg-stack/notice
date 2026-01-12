@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script>
+
+  function getSelectedLangsSafe(){
+    const boxes = Array.from(document.querySelectorAll('input.lang[type="checkbox"]'));
+    const langs = boxes.filter(b=>b.checked).map(b=>b.value);
+    return langs.length ? langs : ["KO"];
+  }
+
+  // Minimal click handler (loads early, independent of other scripts)
+  window.__safeGenerate = function(){
+    try{
+      if(typeof window.generate === 'function'){
+        const r = window.generate();
+        // If async, surface errors (async exceptions won't be caught by try/catch)
+        if(r && typeof r.then === 'function'){
+          r.catch((e)=>{
+            console.error(e);
+            alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
+          });
+        }
+        return r;
+      }
+    }catch(e){ console.error(e); }
+    alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
+    return false;
+  };
+function renderResults(map){
+    // map: {KO:text, EN:text, JA:text}
+    const resArea = document.getElementById("resArea");
+    const tabH = document.getElementById("tabH");
+    const tabB = document.getElementById("tabB");
+    if(!resArea || !tabH || !tabB) return;
+    resArea.style.display = "block";
+    const langs = Object.keys(map);
+    tabH.innerHTML = langs.map((l,i)=>`<button class="tab ${i===0?'active':''}" data-lang="${l}">${l}</button>`).join("");
+    tabB.innerHTML = langs.map((l,i)=>`<div class="tab-pane ${i===0?'active':''}" data-lang="${l}"><pre class="out-pre"></pre></div>`).join("");
+    langs.forEach((l)=>{
+      const pane = tabB.querySelector(`.tab-pane[data-lang="${l}"] pre`);
+      if(pane) pane.textContent = map[l] || "";
+    });
+    tabH.querySelectorAll(".tab").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        tabH.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+        tabB.querySelectorAll(".tab-pane").forEach(p=>p.classList.remove("active"));
+        btn.classList.add("active");
+        const l = btn.dataset.lang;
+        tabB.querySelector(`.tab-pane[data-lang="${l}"]`).classList.add("active");
+      });
+    });
+  }
+
+</script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Professional Notice Master v40.3 (현상/수정 중복 제거 + 자연스러운 문장)</title>
+  <style>
+    body { background-color:#0f172a; color:#f8fafc; font-family:'Pretendard',system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif; display:flex; justify-content:center; padding:20px; }
+    .container { width:100%; max-width:980px; background:#1e293b; padding:40px; border-radius:24px; box-shadow:0 20px 50px rgba(0,0,0,.6); border:1px solid #334155; }
+    h1 { text-align:center; color:#22d3ee; margin:0 0 10px; font-size:26px; font-weight:900; }
+    .sub { text-align:center; color:#94a3b8; margin:0 0 26px; font-size:13px; line-height:1.6; }
+
+    .form-group { margin-bottom:18px; }
+    label { display:block; margin-bottom:10px; color:#94a3b8; font-weight:900; font-size:14px; }
+    input, select, textarea { width:100%; padding:14px; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:12px; box-sizing:border-box; font-size:15px; outline:none; }
+    textarea { resize: vertical; min-height: 90px; }
+    input:focus, select:focus, textarea:focus { border-color:#22d3ee; box-shadow:0 0 0 3px rgba(34,211,238,.18); }
+
+    .row { display:flex; gap:15px; flex-wrap:wrap; }
+    .row > .form-group { flex:1; min-width:250px; }
+
+    .lang-group { display:flex; gap:15px; background:#0f172a; padding:12px 20px; border-radius:12px; border:1px solid #334155; align-items:center; flex-wrap:wrap; }
+    .lang-group label { margin:0; font-size:13px; color:#e2e8f0; font-weight:900; display:flex; align-items:center; gap:8px; }
+    .lang-group input { width:auto; padding:0; }
+
+    .helper { color:#94a3b8; font-size:12px; margin-top:8px; line-height:1.6; }
+
+    .pillbar { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .pill { font-size:12px; color:#94a3b8; border:1px solid #334155; background:#0f172a; padding:8px 10px; border-radius:999px; }
+    .pill.ok { color:#9be7b1; border-color:rgba(155,231,177,.35); }
+    .pill.info { color:#a5b4fc; border-color:rgba(165,180,252,.35); }
+
+    .make-btn { width:100%; padding:20px; background:linear-gradient(135deg,#22d3ee,#0ea5e9); color:#0f172a; border:none; font-weight:900; border-radius:14px; cursor:pointer; font-size:18px; margin-top:10px; }
+    .make-btn:active { transform:translateY(1px); }
+
+    #loading { display:none; text-align:center; color:#22d3ee; margin:18px 0; font-weight:900; }
+
+    .tabs { display:flex; margin-top:26px; gap:6px; }
+    .tab-btn { flex:1; padding:14px; background:#334155; border:none; color:#94a3b8; cursor:pointer; border-radius:12px 12px 0 0; font-weight:900; }
+    .tab-btn.active { background:#22d3ee; color:#0f172a; }
+
+    .result-box { background:#0f172a; padding:28px 30px; border-radius:0 15px 15px 15px; white-space:pre-wrap; min-height:360px; border:1px solid #334155; border-top:none; font-size:16px; line-height:2.15; color:#e2e8f0; }
+
+    .copy-btn { width:100%; padding:16px; background:#475569; color:#fff; border-radius:12px; cursor:pointer; margin-top:16px; font-weight:900; border:none; }
+
+    .hidden { display:none !important; }
+
+    .warnbox { margin: 14px 0 0; padding: 14px 16px; background:#0f172a; border:1px solid rgba(255,211,138,.35); border-left:5px solid #ffd38a; border-radius:12px; color:#e2e8f0; font-size:13px; line-height:1.6; }
+    .warnbox b { color:#ffd38a; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎮 Professional Notice Master v40.3</h1>
+  <div class="sub">
+    <b>현상 현상</b>, <b>수정 수정</b> 중복 방지 + 점검 문장 톤을 운영 공지 스타일로 고정했습니다.<br/>
+    2문단은 <b>“현상 수정/해결을 위해 …”</b> 형태로 출력되어 <code>을(를)</code> 같은 표기가 절대 나오지 않습니다.
+  </div>
+
+  <div class="warnbox">
+    <b>게임명 입력란 제거</b> (현재 본문에서 미사용).<br/>
+    점검(KO)은 키 없이 생성 가능 / 이슈·조치완료만 Groq Key 필요 (콘솔에서 localStorage에 저장).
+  </div>
+
+  <div class="row" style="margin-top:18px;">
+    <div class="form-group">
+      <label>유저 호칭</label>
+      <input type="text" id="userTitle" value="모험가 여러분">
+    </div>
+    <div class="form-group">
+      <label>화자명</label>
+      <input type="text" id="speakerName" value="바바">
+      <div class="helper">KO 1문단 고정: <code>안녕하세요 {호칭}, {화자}입니다.</code></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="form-group">
+      <label>언어 선택</label>
+      <div class="lang-group">
+        <label><input type="checkbox" class="lang" value="KO" checked> KO</label>
+        <label><input type="checkbox" class="lang" value="EN"> EN</label>
+        <label><input type="checkbox" class="lang" value="JA"> JA</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>공지 유형</label>
+      <div class="helper">※ 공지 유형 선택에 따라 관련 입력 항목만 표시됩니다. (일부 환경에서는 자동 숨김이 제한될 수 있습니다.)</div>
+      <select id="noticeType">
+        <option value="issue" selected>이슈 현상 안내</option>
+        <option value="maint">점검 안내</option>
+        <option value="done">조치 완료 안내</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="form-group">
+      <label>일시 형식</label>
+      <select id="dtFormat">
+        <option value="slash">MM/DD HH:MM</option>
+        <option value="korean">M월 D일 HH:MM</option>
+      </select>
+      <div class="pillbar">
+        <span class="pill info" id="pillTemplate">템플릿: -</span>
+        <span class="pill ok" id="pillApology">사과: 기본 포함</span>
+      </div>
+    </div>
+    <div class="form-group" style="display:none;">
+      <label>점검 문장 스타일</label>
+      <select id="fixVerb">
+        <option value="수정" selected>수정</option>
+        <option value="해결">해결</option>
+      </select>
+      <div class="helper">2문단에 사용: <code>현상 수정/해결을 위해 …</code></div>
+    </div>
+  </div>
+
+  <!-- 점검 -->
+  <div id="maintSection" class="hidden">
+    <div class="row">
+      <div class="form-group">
+        <label>점검 종류</label>
+        <select id="maintKind" onchange="syncMaintSubtitle();">
+          <option value="긴급" selected>긴급 점검</option>
+          <option value="임시">임시 점검</option>
+          <option value="정기">정기 점검</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>점검 상태</label>
+        <select id="maintStatus" onchange="syncMaintSubtitle();">
+          <option value="planned" selected>진행 예정</option>
+          <option value="ongoing">진행 중</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>점검 목적</label>
+      <input type="text" id="maintPurpose" placeholder="예: 배너 미노출 현상 수정 / 캐릭터 생성 불가">
+      <div class="helper">※ 입력 끝의 “수정/해결/조치”는 자동 정리됩니다. (중복 방지)</div>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>상세 블록 소제목(대괄호 자동 처리)</label>
+        <input type="text" id="maintSubtitle" value="긴급 점검 진행 예정 안내">
+        <div class="helper">출력: <code>[긴급 점검 진행 예정 안내]</code></div>
+      </div>
+      <div class="form-group">
+        <label>점검 내용(선택)</label>
+        <input type="text" id="maintContent" placeholder="예: 배너 미노출 현상 수정">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>점검 시작</label>
+        <input type="datetime-local" id="maintStart">
+      </div>
+      <div class="form-group">
+        <label>점검 종료</label>
+        <input type="datetime-local" id="maintEnd">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>이용 영향(선택)</label>
+        <input type="text" id="impact" placeholder="예: 점검 시간 동안 게임 접속이 제한될 수 있습니다">
+      </div>
+      <div class="form-group">
+        <label>이용 영향 문장 포함</label>
+        <select id="impactInclude">
+          <option value="no" selected>미포함(기본)</option>
+          <option value="yes">포함</option>
+        </select>
+        <div class="helper">포함 시 3문단 마지막에 1문장으로만 들어갑니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 이슈 -->
+  <div id="issueSection">
+    <div class="row">
+      <div class="form-group">
+        <label>이용 영향이 확실한가요?</label>
+        <select id="impactSure">
+          <option value="yes" selected>예 (사과 포함)</option>
+          <option value="no">아니오 (사과 미포함)</option>
+        </select>
+        <div class="helper">이슈 공지의 사과 문구 포함 여부를 결정합니다.</div>
+      </div>
+      <div class="form-group">
+        <label> </label>
+        <div class="helper" style="margin-top:30px;"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="form-group">
+        <label>발생/확인 일시</label>
+        <input type="datetime-local" id="issueDt">
+      </div>
+      <div class="form-group">
+        <label>현상 입력</label>
+        <input type="text" id="issueText" placeholder="예: 접속 불가 현상">
+      </div>
+    </div>
+  </div>
+
+  <!-- 조치완료 -->
+  <div id="doneSection" class="hidden">
+    <div class="row">
+      <div class="form-group">
+        <label>이용 영향이 확실한가요?</label>
+        <select id="doneImpactSure">
+          <option value="yes" selected>예 (사과 포함)</option>
+          <option value="no">아니오 (사과 미포함)</option>
+        </select>
+        <div class="helper">조치 완료 공지의 사과 문구 포함 여부를 결정합니다.</div>
+      </div>
+      <div class="form-group">
+        <label> </label>
+        <div class="helper" style="margin-top:30px;"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="form-group">
+        <label>조치 대상 현상</label>
+        <input type="text" id="doneIssue" placeholder="예: 패키지 구매 불가 현상">
+      </div>
+      <div class="form-group">
+        <label>조치 완료 시각(선택)</label>
+        <input type="datetime-local" id="doneDt">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>추가 안내(선택)</label>
+      <input type="text" id="doneExtra" placeholder="예: 현재는 정상적으로 이용하실 수 있습니다">
+    </div>
+  </div>
+
+  <button class="make-btn" onclick="return window.__safeGenerate && window.__safeGenerate()">공지 생성</button>
+  <div id="loading">🤖 생성 중...</div>
+
+  <div id="resArea" style="display:none;">
+    <div class="tabs" id="tabH"></div>
+    <div class="result-box" id="tabB"></div>
+    <button class="copy-btn" onclick="copyAll()">공지 본문 복사</button>
+  </div>
+</div>
+
+<script>
+  const LS_KEY_NAME = "GROQ_API_KEY";
+  function getApiKey(){ return (localStorage.getItem(LS_KEY_NAME) || "").trim(); }
+  // ✅ DOM 전역변수(id->window) 호환: 브라우저마다 자동 전역 바인딩이 달라서 명시적으로 연결합니다.
+  const $ = (id)=>document.getElementById(id);
+  function bindGlobals(){
+    const ids = [
+      "noticeType","loading","resArea","tabH","tabB","pillTemplate","pillApology",
+      "dtFormat","userTitle","speakerName",
+      // issue
+      "issueDt","issueText","impact",
+      // maint
+      "maintKind","maintStatus","maintPurpose","maintSubtitle","maintContent","maintStart","maintEnd","impactInclude",
+      // done
+      "doneIssue","doneDt","doneExtra","doneImpactSure",
+      // style
+      "fixVerb"
+    ];
+    ids.forEach(id=>{ const el = $(id); if(el) window[id]=el; });
+  }
+  document.addEventListener("DOMContentLoaded", bindGlobals);
+
+
+  let savedResults = {};
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function formatDT(dtStr, fmt){
+    if(!dtStr) return "";
+    const d = new Date(dtStr);
+    if(Number.isNaN(d.getTime())) return "";
+    const m = d.getMonth()+1;
+    const day = d.getDate();
+    const hh = pad2(d.getHours());
+    const mm = pad2(d.getMinutes());
+    if(fmt === "korean") return `${m}월 ${day}일 ${hh}:${mm}`;
+    return `${pad2(m)}/${pad2(day)} ${hh}:${mm}`;
+  }
+  function diffText(startStr, endStr){
+    if(!startStr || !endStr) return "";
+    const s = new Date(startStr);
+    const e = new Date(endStr);
+    if(Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return "";
+    let mins = Math.round((e - s) / 60000);
+    if(mins <= 0) return "";
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if(h > 0 && m > 0) return `(${h}시간 ${m}분)`;
+    if(h > 0) return `(${h}시간)`;
+    return `(${m}분)`;
+  }
+
+  
+  function syncMaintSubtitle(){
+    const kind = maintKind.value;
+    const status = maintStatus.value === "planned" ? "진행 예정 안내" : "진행 안내";
+    maintSubtitle.value = `${kind} 점검 ${status}`;
+  }
+
+  function refreshPills(){
+    pillTemplate.textContent = "템플릿: " + noticeType.options[noticeType.selectedIndex].text;
+  }
+
+  function cleanBracketTitle(s){
+    if(!s) return "";
+    let t = String(s).trim();
+    if((t.startsWith("[") && t.endsWith("]")) || (t.startsWith("(") && t.endsWith(")"))){
+      t = t.slice(1,-1).trim();
+    }
+    return t;
+  }
+
+  // 목적 정규화: 끝의 "수정/해결/조치" 제거 (수정 수정 방지)
+  function normalizePurpose(purpose){
+    return String(purpose || "").replace(/\s*(수정|해결|조치)\s*$/g, "").trim();
+  }
+
+  // "현상" 중복 방지: base가 이미 '현상'으로 끝나면 추가하지 않음
+  function ensurePhenomenonPhrase(base){
+    const t = String(base || "").trim();
+    if(!t) return "";
+    if(t.endsWith("현상")) return t;
+    return t + " 현상";
+  }
+
+  function buildMaintBlock(subtitle, windowText, content){
+    const sub = cleanBracketTitle(subtitle) || "점검 안내";
+    const cont = (content || "").trim();
+    return `[${sub}]\n- 진행 일시: ${windowText}\n- 점검 내용: ${cont}\n\n점검이 안내해 드린 시간보다 조기 종료되거나 연장될 경우 별도 공지를 통해 다시 한번 안내해 드리겠습니다.`;
+  }
+
+  
+  // ✅ KO 이슈 공지: 운영 공지 톤으로 고정 (Groq 없이도 일정 퀄리티 보장)
+  
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function formatDateTime(val, fmt){
+    if(!val) return "";
+    let d;
+    try{
+      d = (val instanceof Date) ? val : new Date(val);
+      if(isNaN(d.getTime())) return String(val);
+    }catch(e){ return String(val); }
+    const MM = pad2(d.getMonth()+1);
+    const DD = pad2(d.getDate());
+    const HH = pad2(d.getHours());
+    const mm = pad2(d.getMinutes());
+    if(fmt==="MM/DD HH:MM") return `${MM}/${DD} ${HH}:${mm}`;
+    return `${d.getFullYear()}-${MM}-${DD} ${HH}:${mm}`;
+  }
+
+  // ✅ 조사 자동 선택: (이/가), (을/를), (은/는), (과/와), (으로/로)
+  function josa(word, pair){
+    const w = (word||"").trim();
+    if(!w) return pair.split("/")[0];
+    const last = w.charCodeAt(w.length-1);
+    const isHangul = (last >= 0xAC00 && last <= 0xD7A3);
+    if(!isHangul) return pair.split("/")[0];
+    const jong = (last - 0xAC00) % 28;
+    const hasJong = jong !== 0;
+    const [a,b] = pair.split("/");
+    if(pair==="으로/로"){
+      return (!hasJong || jong===8) ? b : a;
+    }
+    return hasJong ? a : b;
+  }
+
+  function buildIssueTextKO(payload){
+    const caller = (payload.speaker||payload.caller||"").trim() || "바바";
+    const honor = (payload.userHonor||payload.honor||"").trim() || "모험가 여러분";
+    const dtFmt = payload.dtFormat || "MM/DD HH:MM";
+    const whenRaw = (
+      payload.issueAt ||
+      payload.issueDt ||
+      payload.issueDatetime ||
+      payload.issueDateTime ||
+      payload.issueTime ||
+      payload.occurAt ||
+      payload.occurDatetime ||
+      payload.occur ||
+      payload.when ||
+      ""
+    );
+    const whenDom = (document.getElementById("issueDt") && document.getElementById("issueDt").value) || "";
+    const when = String(whenRaw || whenDom || "").trim();
+    const phenomenon = (String(payload.issueDesc || payload.phenomenon || payload.phenomenonText || "")).trim() || "접속 불가 현상";
+    const impactSure = (payload.impactSure || payload.isImpactSure || payload.impactConfirmed || "예") === "예";
+    const includeApology = (payload.includeApology !== undefined) ? !!payload.includeApology : true;
+    const extra = (String(payload.impactText || payload.extraImpact || "")).trim();
+    const timeStr = formatDT(when, dtFmt);
+    const timeStrSafe = (timeStr && String(timeStr).trim()) ? String(timeStr).trim() : (
+      (typeof when === "string" && when.trim()) ? when.trim() :
+      (when instanceof Date && !isNaN(when.getTime())) ? when.toLocaleString("ko-KR") : ""
+    );
+    const g = josa(phenomenon, "이/가");
+
+    const lines = [];
+    lines.push(`안녕하세요 ${honor}, ${caller}입니다.`);
+    lines.push("");
+    lines.push(`${timeStrSafe}부터 ${phenomenon}${g} 발생하여 안내해 드립니다.`);
+    lines.push("");
+
+    if(includeApology && impactSure){
+      lines.push(`해당 현상으로 이용에 불편을 드려 죄송하다는 말씀을 드리며, 원활한 이용이 가능하도록 신속히 조치하겠습니다.`);
+      lines.push("");
+    }else if(includeApology){
+      lines.push(`현재 관련 내용을 확인 중이며, 이용에 불편을 드려 죄송합니다. 빠르게 원인을 파악하여 조치하겠습니다.`);
+      lines.push("");
+    }else{
+      lines.push(`현재 신속히 원인을 확인하고 있으며, 정상화될 수 있도록 조치 중입니다.`);
+      lines.push("");
+    }
+
+    if(extra){
+      lines.push(`※ 참고: ${extra}`);
+      lines.push("");
+    }
+
+    lines.push(`이후 진행되는 사항에 대해서는 별도 공지를 통해 다시 한번 안내해 드리겠습니다.`);
+    lines.push("");
+    lines.push("감사합니다.");
+
+    return lines.join("\n");
+}
+
+
+  // ✅ KO 본문 기반 번역 (EN/JA): 구조/줄바꿈 유지
+  
+  function buildKOText(payload){
+    const t = payload.noticeType || payload.type;
+    if(t==="maint") return buildMaintTextKO(payload);
+    if(t==="done") return buildDoneTextKO(payload);
+    return buildIssueTextKO(payload);
+  }
+
+function enforceParagraphStructure(srcKO, translated){
+  try{
+    const srcParas = String(srcKO || "").split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean);
+    if(srcParas.length <= 1) return String(translated || "").trim();
+    const t = String(translated || "").trim();
+    if(/\n\s*\n/.test(t)) return t;
+    const sentences = t.split(/(?<=[\.\?\!。！？])\s+/).map(s=>s.trim()).filter(Boolean);
+    if(sentences.length === 0) return t;
+    const n = srcParas.length;
+    const buckets = Array.from({length:n}, ()=>[]);
+    for(let i=0;i<sentences.length;i++){
+      buckets[i % n].push(sentences[i]);
+    }
+    return buckets.map(b=>b.join(" ")).join("\n\n").trim();
+  }catch(e){
+    return String(translated || "");
+  }
+}
+
+async function translateFromKO(koreanNotice, langs){
+    const targets = (langs || []).filter(l => l !== "KO");
+    if(!targets.length) return null;
+
+    const koParas = String(koreanNotice || "").split(/\n\s*\n/).filter(Boolean);
+    const targetParaCount = Math.max(koParas.length, 1);
+
+    const systemMsg = [
+      "You are a professional game operations localization specialist.",
+      "Translate the given Korean game notice into the requested target languages.",
+      "Requirements:",
+      "- Preserve the SAME paragraph structure and blank lines as the Korean notice.",
+      "- Output MUST keep paragraph breaks using two newlines (\\n\\n).",
+      "- Keep tone professional and natural for a game notice.",
+      "- Do NOT add new information.",
+      "- Do NOT include placeholders like (을/를). Use correct, natural grammar.",
+      "- Output MUST be valid JSON ONLY.",
+      "",
+      "Return JSON with keys for each target language. Example:",
+      "{\"EN\":{\"notice\":\"...\"},\"JA\":{\"notice\":\"...\"}}"
+    ].join("\\n");
+
+    const userMsg = [
+      "Korean notice (paragraphs separated by blank lines):",
+      koreanNotice,
+      "",
+      "Target languages: " + targets.join(", "),
+      "",
+      "IMPORTANT: Your translated notice MUST contain the same number of paragraphs as the Korean notice.",
+      "Use \\n\\n between paragraphs. Do not collapse into a single line."
+    ].join("\\n");
+
+    const content = await callGroq(systemMsg, userMsg);
+
+    const enforceParas = (outText) => {
+      const s = String(outText || "").trim();
+      if(!s) return "";
+      const paras = s.split(/\n\s*\n/).filter(Boolean);
+      if(paras.length >= targetParaCount) return s; // already good enough
+
+      // If model collapsed to one paragraph, rebuild paragraphs deterministically
+      const sentenceSplit = (txt) => {
+        // EN: . ! ?  /  JA: 。！？ 
+        const parts = txt
+          .replace(/\s+/g, " ")
+          .split(/(?<=[\.!\?])\s+|(?<=[。！？])\s*/u)
+          .map(x => x.trim())
+          .filter(Boolean);
+        return parts.length ? parts : [txt.trim()];
+      };
+
+      const sentences = sentenceSplit(s);
+      const k = Math.max(targetParaCount, 1);
+
+      const rebuilt = [];
+      let i = 0;
+      for(let p = 0; p < k; p++){
+        // ensure we don't leave remaining paragraphs empty
+        const remainingParas = k - p;
+        const remainingSent = sentences.length - i;
+        const take = (p === k - 1) ? remainingSent : Math.max(1, Math.floor(remainingSent / remainingParas));
+        rebuilt.push(sentences.slice(i, i + take).join(" "));
+        i += take;
+        if(i >= sentences.length) break;
+      }
+      // If still fewer paragraphs, pad by splitting the last paragraph
+      while(rebuilt.length < k && rebuilt.length){
+        rebuilt.push(rebuilt[rebuilt.length-1]);
+      }
+      return rebuilt.slice(0, k).join("\n\n");
+    };
+
+    try{
+      const parsed = JSON.parse(content);
+      const fixed = {};
+      for(const t of targets){
+        if(parsed && parsed[t] && typeof parsed[t].notice === "string"){
+          fixed[t] = { notice: enforceParas(parsed[t].notice) };
+        }else{
+          fixed[t] = { notice: "" };
+        }
+      }
+      return fixed;
+    }catch(e){
+      console.error("translateFromKO JSON parse failed:", e, content);
+      return null;
+    }
+  }
+
+function buildMaintTextKO(payload){
+    const p1 = `안녕하세요 ${payload.userTitle}, ${payload.speaker}입니다.`;
+
+    const rawPurpose = payload.maint.purpose;
+    const base = normalizePurpose(rawPurpose) || rawPurpose;
+    const subject = ensurePhenomenonPhrase(base);
+
+    const kind = payload.maint.kind;
+    const status = payload.maint.status;
+    const verb = (payload.maint.fixVerb === "해결") ? "해결" : "수정"; // 기본 수정
+    const startFmt = formatDT(payload.maint.startRaw, payload.dtFormat);
+    const endFmt = formatDT(payload.maint.endRaw, payload.dtFormat);
+
+    // 2문단에 점검 시간 힌트(시작 기준) 포함
+    const timeLead = startFmt ? `${startFmt}부터 ` : "";
+    const timeRangeTail = (startFmt && endFmt) ? `${endFmt}까지 ` : "";
+
+    const p2 = (status === "ongoing")
+      ? `${timeLead}${subject} ${verb}을 위해 ${kind} 점검이 진행되고 있어 안내해 드립니다.`
+      : `${timeLead}${timeRangeTail}${subject} ${verb}을 위해 ${kind} 점검이 진행될 예정임을 안내해 드립니다.`;
+
+    let p3 = `해당 현상으로 이용에 불편을 드려 죄송하다는 말씀을 드리며, 점검을 통해 조치하여 원활한 플레이 환경을 제공해 드릴 수 있도록 노력하겠습니다.`;
+
+    if(payload.maint.impactInclude === "yes" && payload.maint.impact){
+      const line = payload.maint.impact.trim();
+      if(line) p3 = p3 + `\n${line}`;
+    }
+
+    const block = buildMaintBlock(payload.maint.subtitle, payload.maint.windowText, payload.maint.content || payload.maint.purpose);
+    const p5 = "감사합니다.";
+    return [p1, p2, p3, block, p5].join("\n\n");
+  }
+
+  // ✅ KO 조치 완료 공지: 운영 공지 톤으로 고정 + 조사(을/를) 자동 처리 유지
+  function buildDoneTextKO(payload){
+    const caller = (payload.speaker||payload.caller||"").trim() || "운영팀";
+    const honor  = (payload.userTitle||payload.honor||"").trim() || "모험가 여러분";
+    const dtFmt  = payload.dtFormat || "MM/DD HH:MM";
+
+    const done = payload.done || {};
+    const issueRaw = (done.issue || done.doneIssue || done.target || done.issueText || "").trim();
+    const issue = issueRaw || "이용 불가 현상";
+
+    // 조치 완료 시각(선택)
+    const endRaw = done.dtRaw || done.doneDt || done.completedAt || "";
+    const endStr = endRaw ? formatDT(endRaw, dtFmt) : "";
+
+    // (선택) 발생/확인 일시가 payload에 있으면 함께 사용
+    const issueBlock = payload.issue || {};
+    const startRaw = issueBlock.dtRaw || payload.issueDt || "";
+    const startStr = startRaw ? formatDT(startRaw, dtFmt) : "";
+
+    const extra = (done.extra || done.doneExtra || done.note || "").trim();
+    const impactSure = (done.impactSure || done.doneImpactSure || done.apology || "yes") === "yes";
+
+    const obj = josa(issue, "을/를");
+
+    const lines = [];
+    lines.push(`안녕하세요 ${honor}, ${caller}입니다.`);
+    lines.push("");
+
+    let core = "";
+    if(startStr && endStr){
+      core = `앞서 안내해 드렸던 ${startStr}부터 발생했던 ${issue}${obj} ${endStr} 경 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else if(startStr){
+      core = `앞서 안내해 드렸던 ${startStr}부터 발생했던 ${issue}${obj} 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else if(endStr){
+      core = `앞서 안내해 드렸던 ${issue}${obj} ${endStr} 경 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else{
+      core = `앞서 안내해 드렸던 ${issue}${obj} 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`;
+    }
+
+    lines.push(core);
+
+    if(extra){
+      lines.push("");
+      lines.push(extra.endsWith(".") ? extra : (extra + "."));
+    }
+
+    lines.push("");
+
+    if(impactSure){
+      lines.push("해당 현상으로 인해 이용에 불편을 드려 죄송하다는 말씀을 드리며,");
+    }
+    lines.push("앞으로 더 안정적인 서비스 제공을 위해 최선을 다하겠습니다.");
+    lines.push("");
+    lines.push("감사합니다.");
+return lines.join("\n");
+  }
+
+  async function callGroq(systemMsg, userMsg){
+    const key = getApiKey();
+    if(!key) throw new Error("GROQ_API_KEY가 없습니다.");
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+key, "Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"llama-3.1-8b-instant",
+        messages:[{role:"system",content:systemMsg},{role:"user",content:userMsg}],
+        response_format:{type:"json_object"},
+        temperature:0
+      })
+    });
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if(!content) throw new Error("응답이 비어 있습니다.");
+    return content;
+  }
+
+  function normalizeLangJson(raw, langs){
+    const upperKeys = Object.keys(raw || {}).map(k => k.toUpperCase());
+    const hasAnyLangKey = langs.some(l => upperKeys.includes(l));
+    if(hasAnyLangKey){
+      const fixed = {};
+      for(const l of langs){
+        const key = Object.keys(raw).find(k => k.toUpperCase() === l);
+        if(key && raw[key] && typeof raw[key] === "object"){
+          fixed[l] = { notice: String(raw[key].notice || "") };
+        }else if(key && typeof raw[key] === "string"){
+          fixed[l] = { notice: String(raw[key]) };
+        }else{
+          fixed[l] = { notice: "" };
+        }
+      }
+      return { fixed, coerced: false };
+    }
+    const fixed = {};
+    const dump = (typeof raw === "string") ? raw : JSON.stringify(raw, null, 2);
+    for(const l of langs){
+      fixed[l] = { notice: l === langs[0] ? dump : "" };
+    }
+    return { fixed, coerced: true };
+  }
+
+  async function generate(){
+    bindGlobals();
+    const __langs = getSelectedLangsSafe();
+    const langs = [...document.querySelectorAll(".lang:checked")].map(e=>e.value);
+    if(!langs.length) return alert("언어를 1개 이상 선택해 주세요.");
+
+    const type = noticeType.value;
+    const dtFmt = dtFormat.value;
+
+    loading.style.display="block";
+    resArea.style.display="none";
+
+    const payload = {
+      type,
+      userTitle: userTitle.value.trim() || "이용자 여러분",
+      speaker: speakerName.value.trim() || "운영팀",
+      dtFormat: dtFmt,
+      langs,
+      maint: {},
+      issue: {},
+      done: {}
+    };
+
+
+    if(__langs.length===1 && __langs[0]==="KO"){
+      try{
+        // KO만 선택된 경우에도 type별 payload를 먼저 채운 뒤 로컬 템플릿으로 생성합니다.
+        if(type === "maint"){
+          if(!maintPurpose.value.trim()) return alert("점검 목적을 입력해 주세요.");
+          if(!maintStart.value || !maintEnd.value) return alert("점검 시작/종료 시간을 입력해 주세요.");
+
+          payload.maint = {
+            kind: maintKind.value,
+            status: maintStatus.value,
+            purpose: maintPurpose.value.trim(),
+            subtitle: cleanBracketTitle(maintSubtitle.value),
+            startRaw: maintStart.value,
+            endRaw: maintEnd.value,
+            impact: maintImpact.value.trim(),
+            impactSentence: impactSentence.value,
+            impactSure: (document.getElementById("maintImpactSure") ? document.getElementById("maintImpactSure").value : "yes"),
+            useApology: useApology.value
+          };
+          payload.type = "maint";
+          payload.noticeType = "maint";
+        }else if(type === "issue"){
+          if(!issueDt.value) return alert("발생/확인 일시를 입력해 주세요.");
+          if(!issueText.value.trim()) return alert("현상 입력을 작성해 주세요.");
+
+          payload.issue = {
+            dtRaw: issueDt.value,
+            text: issueText.value.trim(),
+            apology: (document.getElementById("impactSure") ? document.getElementById("impactSure").value : "yes"),
+            extra: (document.getElementById("issueExtra") ? document.getElementById("issueExtra").value.trim() : "")
+          };
+          payload.type = "issue";
+          payload.noticeType = "issue";
+        }else if(type === "done"){
+          const di = (doneIssue ? doneIssue.value : "").trim();
+          const dd = (doneDt ? doneDt.value : "");
+          if(!di) return alert("조치 대상 현상을 입력해 주세요.");
+
+          payload.done = {
+            issue: di,
+            dtRaw: dd,
+            doneDt: dd,
+            extra: (doneExtra ? doneExtra.value : "").trim(),
+            impactSure: (doneImpactSure ? doneImpactSure.value : "yes")
+          };
+          payload.type = "done";
+          payload.noticeType = "done";
+        }
+
+        const koText = buildKOText(payload);
+        if(typeof renderResults==="function") renderResults({KO: koText});
+        else if(typeof renderSingleKO==="function") renderSingleKO(koText);
+      }finally{
+        if(typeof loading!=="undefined" && loading) loading.style.display="none";
+      }
+      return;
+    }
+
+
+    try{
+      if(type === "maint"){
+        if(!maintPurpose.value.trim()) return alert("점검 목적을 입력해 주세요.");
+        if(!maintStart.value || !maintEnd.value) return alert("점검 시작/종료 시간을 입력해 주세요.");
+
+        const start = maintStart.value;
+        const end = maintEnd.value;
+
+        payload.maint = {
+          kind: maintKind.value,
+          status: maintStatus.value,
+          purpose: maintPurpose.value.trim(),
+          subtitle: cleanBracketTitle(maintSubtitle.value),
+          content: maintContent.value.trim(),
+          startRaw: start,
+          endRaw: end,
+          windowText: `${formatDT(start, dtFmt)} ~ ${formatDT(end, dtFmt)} ${diffText(start, end)}`.trim(),
+          impact: impact.value.trim(),
+          impactInclude: impactInclude.value,
+          fixVerb: fixVerb.value
+        };
+
+        savedResults = {};
+        const koNotice = buildMaintTextKO(payload);
+        if(langs.includes("KO")){
+          savedResults.KO = { notice: koNotice };
+        }
+
+        const nonKo = langs.filter(l => l !== "KO");
+        if(nonKo.length){
+          const key = getApiKey();
+          if(!key){
+            // 점검(KO)은 키 없이 가능하지만, EN/JA 번역은 키가 필요합니다.
+            alert("점검 공지의 EN/JA 번역을 위해 Groq API Key가 필요합니다.\n콘솔에서 localStorage.setItem('GROQ_API_KEY','gsk_...') 를 실행해 주세요.");
+            for(const l of nonKo){ savedResults[l] = { notice: "" }; }
+            renderTabs(langs);
+            return;
+          }
+
+          const tr = await translateFromKO(koNotice, langs);
+          for(const l of nonKo){
+            savedResults[l] = { notice: (tr && tr[l] && typeof tr[l].notice === "string") ? tr[l].notice : "" };
+          }
+        }
+
+        renderTabs(langs);
+        return;
+      }
+
+      // ✅ 이슈 현상 안내: KO는 로컬 템플릿(고정 퀄리티), 필요시 EN/JA만 번역 호출
+      if(type === "issue"){
+        if(!issueDt.value) return alert("발생/확인 일시를 입력해 주세요.");
+        if(!issueText.value.trim()) return alert("현상 입력을 작성해 주세요.");
+
+        payload.issue = {
+          dtRaw: issueDt.value,
+          text: issueText.value.trim(),
+          apology: (document.getElementById("impactSure") ? document.getElementById("impactSure").value : "yes")
+        };
+
+        savedResults = {};
+        if(langs.includes("KO")){
+          savedResults.KO = { notice: buildIssueTextKO(payload) };
+        }else{
+          // KO가 선택되지 않았더라도 번역 기준을 위해 KO 생성
+          savedResults.KO = { notice: buildIssueTextKO(payload) };
+        }
+
+        // EN/JA가 선택되면 KO를 번역해서 채움 (키가 없으면 빈칸)
+        const tr = await translateFromKO(savedResults.KO.notice, langs);
+        for(const l of langs){
+          if(l === "KO") continue;
+          savedResults[l] = { notice: (tr && tr[l] && tr[l].notice) ? tr[l].notice : "" };
+        }
+        if(!langs.includes("KO")) delete savedResults.KO;
+        renderTabs(langs);
+        return;
+      }
+
+
+      // ✅ 조치 완료 안내: KO는 로컬 템플릿(운영 공지 톤 고정), EN/JA만 KO를 번역
+      if(type === "done"){
+        const di = (doneIssue ? doneIssue.value : "").trim();
+        const dd = (doneDt ? doneDt.value : "");
+        if(!di) return alert("조치 대상 현상을 입력해 주세요.");
+
+        payload.done = {
+          issue: di,
+          dtRaw: dd,
+          doneDt: dd,
+          extra: (doneExtra ? doneExtra.value : "").trim(),
+          impactSure: (doneImpactSure ? doneImpactSure.value : "yes")
+        };
+
+        savedResults = {};
+        // KO 본문은 항상 로컬 템플릿으로 생성(번역 경로로 섞이지 않게)
+        const koDone = buildDoneTextKO(payload);
+        savedResults.KO = { notice: koDone };
+
+        // 번역이 필요한 언어가 있으면 Groq로 KO를 번역해서 채움
+        const needTr = langs.filter(l => l !== "KO");
+        if(needTr.length){
+          const key = getApiKey();
+          if(!key) return alert("EN/JA 번역을 위해 Groq API Key가 필요합니다.\n콘솔(F12)에서 localStorage.setItem('GROQ_API_KEY','gsk_...') 를 실행해 주세요.");
+          const tr = await translateFromKO(savedResults.KO.notice, langs);
+          for(const l of langs){
+            if(l === "KO") continue;
+            savedResults[l] = { notice: (tr && tr[l] && tr[l].notice) ? tr[l].notice : "" };
+          }
+        }
+
+        // KO가 선택되지 않았다면 KO 결과는 숨김(번역 기준용으로만 사용)
+        if(!langs.includes("KO")) delete savedResults.KO;
+        renderTabs(langs);
+        return;
+      }
+
+      const key = getApiKey();
+      if(!key) return alert("이슈/조치완료는 Groq API Key가 필요합니다.\n콘솔(F12)에서 localStorage.setItem('GROQ_API_KEY','gsk_...') 를 실행해 주세요.");
+
+      const systemMsg = `
+너는 게임 서비스 운영 공지 전문 작가다.
+반드시 언어별 JSON 형식으로만 반환해라.
+- 최상위 키는 요청 언어만 포함한다: ${langs.join(", ")}
+- 각 언어 객체는 오직 {"notice":"<본문>"}만 가진다.
+- 문단 5개, 빈 줄(\\n\\n)로 구분.
+- KO 1문단은 "안녕하세요 ${payload.userTitle}, ${payload.speaker}입니다."
+- KO 5문단은 "감사합니다."
+- 금지: 이용해 주셔서 감사합니다 / 서비스 이용에 불편 /  문의 / ※ 참고
+`;
+      const content = await callGroq(systemMsg, JSON.stringify(payload, null, 2));
+      let parsed;
+      try{ parsed = JSON.parse(content); }catch(e){ parsed = { notice: content }; }
+      const norm = normalizeLangJson(parsed, langs);
+      savedResults = norm.fixed;
+      renderTabs(langs);
+
+    }catch(e){
+      console.error(e);
+      alert("생성 실패: " + (e?.message || e));
+    }finally{
+      loading.style.display="none";
+    }
+  }
+  window.generate = generate;
+
+  function renderTabs(langs){
+    tabH.innerHTML="";
+    langs.forEach((l,i)=>{
+      const b=document.createElement("button");
+      b.className="tab-btn"+(i===0?" active":"");
+      b.innerText=l;
+      b.onclick=()=>{
+        document.querySelectorAll(".tab-btn").forEach(t=>t.classList.remove("active"));
+        b.classList.add("active");
+        updateDisplay(l);
+      };
+      tabH.appendChild(b);
+    });
+    resArea.style.display="block";
+    updateDisplay(langs[0]);
+  }
+
+  function updateDisplay(lang){
+    tabB.innerText = savedResults?.[lang]?.notice || "";
+  }
+
+  function copyAll(){
+    navigator.clipboard.writeText(tabB.innerText);
+    alert("복사되었습니다.");
+  }
+
+  (function init(){
+    toggleSections();
+    syncMaintSubtitle();
+    refreshPills();
+
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const rounded = Math.round(minutes / 5) * 5;
+    now.setMinutes(rounded); now.setSeconds(0); now.setMilliseconds(0);
+
+    const yyyy = now.getFullYear();
+    const mm = pad2(now.getMonth()+1);
+    const dd = pad2(now.getDate());
+    const hh = pad2(now.getHours());
+    const mi = pad2(now.getMinutes());
+    const cur = `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+
+    issueDt.value = cur;
+    doneDt.value = cur;
+
+    const end = new Date(now.getTime() + 2*60*60*1000);
+    const em = pad2(end.getMonth()+1), ed = pad2(end.getDate()), eh = pad2(end.getHours()), eMi = pad2(end.getMinutes());
+    maintStart.value = cur;
+    maintEnd.value = `${end.getFullYear()}-${em}-${ed}T${eh}:${eMi}`;
+  })();
+
+  function toggleSections(){
+    const typeEl = document.getElementById("noticeType");
+    const type = typeEl ? typeEl.value : "issue";
+
+    const maint = document.getElementById("maintSection");
+    const issue = document.getElementById("issueSection");
+    const done  = document.getElementById("doneSection");
+
+    if(maint) maint.classList.toggle("hidden", type !== "maint");
+    if(issue) issue.classList.toggle("hidden", type !== "issue");
+    if(done)  done.classList.toggle("hidden", type !== "done");
+
+    // 템플릿 pill 표시(선택 텍스트)
+    const pill = document.getElementById("pillTemplate");
+    if(pill && typeEl){
+      pill.textContent = "템플릿: " + typeEl.options[typeEl.selectedIndex].text;
+    }
+  }
+
+  function initUI(){
+    try{
+      const typeEl = document.getElementById("noticeType");
+      if(typeEl){
+        typeEl.addEventListener("change", () => {
+          toggleSections();
+          if(typeof refreshPills === 'function') refreshPills();
+        });
+      }
+    }catch(e){
+      // ignore
+    }
+    // Always attempt to toggle once
+    try{ toggleSections(); }catch(e){}
+  }
+
+  document.addEventListener("DOMContentLoaded", initUI);
+
+</script>
+
+
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const pad = (n)=>String(n).padStart(2,"0");
+
+  function parseDT(v){
+    // v may be '' or '2026-01-09T01:55'
+    if(!v) return null;
+    try{
+      // datetime-local returns local time; treat as local
+      const d = new Date(v);
+      if(isNaN(d.getTime())) return null;
+      return d;
+    }catch(e){ return null; }
+  }
+  function fmtDT(v){
+    const d = (v instanceof Date) ? v : parseDT(v);
+    if(!d) return "";
+    const mm = pad(d.getMonth()+1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    return `${mm}/${dd} ${hh}:${mi}`;
+  }
+
+  function buildIssueKO(){
+    const userTitle = ($("userTitle")?.value || "모험가 여러분").trim();
+    const speaker = ($("speakerName")?.value || "운영팀").trim();
+
+    const dt = fmtDT($("issueDt")?.value || "");
+    const issue = ($("issueText")?.value || "").trim();
+    const apology = ($("impact")?.value || "yes") === "yes";
+
+    const p1 = `안녕하세요 ${userTitle}, ${speaker}입니다.`;
+    const p2 = dt
+      ? `${dt}부터 ${issue}${josa(issue,'이/가')} 발생하여 안내해 드립니다.`
+      : `${issue}${josa(issue,'이/가')} 발생하여 안내해 드립니다.`;
+    const p3 = apology
+      ? `해당 현상으로 이용에 불편을 드려 죄송하다는 말씀을 드리며, 정상적으로 이용하실 수 있도록 신속히 조치하겠습니다.`
+      : `정상적으로 이용하실 수 있도록 신속히 조치하겠습니다.`;
+    const p4 = `이후 진행되는 사항에 대해서는 별도 공지를 통해 다시 한번 안내해 드리겠습니다.`;
+    const p5 = `감사합니다.`;
+    return [p1,"",p2,"",p3,"",p4,"",p5].join("\n");
+  }
+
+  function buildMaintKO(){
+    const userTitle = ($("userTitle")?.value || "모험가 여러분").trim();
+    const speaker = ($("speakerName")?.value || "운영팀").trim();
+
+    const kind = ($("maintKind")?.value || "임시 점검").trim();      // 긴급/임시 등
+    const status = ($("maintStatus")?.value || "진행 예정").trim();   // 예정/진행/완료 등
+    const purpose = ($("maintPurpose")?.value || "").trim();
+    const subtitle = ($("maintSubtitle")?.value || `${kind} ${status} 안내`).trim();
+    const content = ($("maintContent")?.value || "").trim();
+    const start = fmtDT($("maintStart")?.value || "");
+    const end   = fmtDT($("maintEnd")?.value || "");
+    const includeImpact = ($("impactInclude")?.value || "no") === "yes";
+    const impactText = ($("impact")?.value || "").trim();
+    const apology = ($("impact")?.value || "yes") === "yes";
+
+    const p1 = `안녕하세요 ${userTitle}, ${speaker}입니다.`;
+    const p2 = `${purpose} 해결을 위해 아래와 같이 ${kind}${josa(kind,'이/가')} ${status}될 예정임을 안내해 드립니다.`;
+    const p3 = apology
+      ? `갑작스러운 점검으로 인해 이용이 제한되는 점 죄송하다는 말씀을 드립니다.`
+      : `원활한 서비스 제공을 위해 최선을 다하겠습니다.`;
+
+    const head = `[${subtitle}]`;
+    const rows = [];
+    if(start && end){
+      // duration hours
+      rows.push(`- 진행 일시: ${start} ~ ${end}`);
+    }else if(start){
+      rows.push(`- 진행 일시: ${start}`);
+    }
+    if(content) rows.push(`- 점검 내용: ${content}`);
+    if(includeImpact && impactText) rows.push(`- 영향: ${impactText}`);
+
+    const p4 = `${head}
+
+${rows.join("\n")}`.trim();
+    const p5 = `점검이 안내해 드린 시간보다 조기 종료되거나 연장될 경우 별도 공지를 통해 다시 한번 안내해 드리겠습니다.
+
+감사합니다.`;
+    return [p1,"",p2,"",p3,"",p4,"",p5].join("\n");
+  }
+
+  function buildDoneKO(){
+    const userTitle = ($("userTitle")?.value || "모험가 여러분").trim();
+    const speaker = ($("speakerName")?.value || "운영팀").trim();
+
+    const issueRaw = ($("doneIssue")?.value || "").trim();
+    const issue = issueRaw || "이용 불가 현상";
+
+    // 조치 완료 시각(선택)
+    const endDt = fmtDT($("doneDt")?.value || "");
+
+    // (선택) 발생/확인 일시가 화면에 남아있는 경우 함께 사용
+    const startDt = fmtDT($("issueDt")?.value || "");
+
+    const extraRaw = ($("doneExtra")?.value || "").trim();
+    const apologize = ($("doneImpactSure")?.value || "yes") === "yes";
+
+    const obj = josa(issue, "을/를");
+
+    const lines = [];
+    lines.push(`안녕하세요 ${userTitle}, ${speaker}입니다.`);
+    lines.push("");
+
+    if(apologize){
+      lines.push("해당 현상으로 이용에 불편을 드려 죄송합니다.");
+      lines.push("");
+    }
+
+    // 핵심 안내: 현상 + 발생 시각(가능하면) + 조치 완료 시각(가능하면)
+    let core = "";
+    if(startDt && endDt){
+      core = `${startDt}부터 발생했던 ${issue}${obj} ${endDt}경 조치 완료되어 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else if(startDt){
+      core = `${startDt}부터 발생했던 ${issue}${obj} 조치가 완료되어 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else if(endDt){
+      core = `${issue}${obj} ${endDt}경 조치 완료되어 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else{
+      core = `${issue}${obj} 조치가 완료되어 현재는 정상적으로 이용하실 수 있습니다.`;
+    }
+
+    lines.push(core);
+
+    if(extraRaw){
+      const extra = extraRaw.endsWith(".") ? extraRaw : (extraRaw + ".");
+      lines.push(extra);
+    }
+
+    lines.push("");
+    lines.push("앞으로 더 안정적인 서비스 제공을 위해 최선을 다하겠습니다.");
+    lines.push("");
+    lines.push("감사합니다.");
+
+    return lines.join("\n");
+  }
+
+  function renderSingleKO(text){
+    const resArea = $("resArea");
+    const tabH = $("tabH");
+    const tabB = $("tabB");
+    if(!resArea || !tabH || !tabB) return;
+    resArea.style.display = "block";
+    tabH.innerHTML = '<button class="tab active" data-lang="KO">KO</button>';
+    tabB.innerHTML = '<div class="tab-pane active" data-lang="KO"><pre class="out-pre"></pre></div>';
+    tabB.querySelector("pre").textContent = text;
+  }
+
+  async function safeGenerate(){
+    try{
+      if(typeof window.generate === "function"){
+        return await window.generate();
+      }
+      throw new Error("generate() not found");
+    }catch(e){
+      console.error(e);
+      // Fallback local generator (KO only)
+      const typeEl = $("noticeType");
+      const typeText = typeEl ? (typeEl.value || "") : "";
+      const type =
+        (typeText.includes("점검") || typeText === "maint") ? "maint" :
+        (typeText.includes("조치") || typeText === "done") ? "done" :
+        (typeText.includes("이슈") || typeText === "issue") ? "issue" :
+        "issue";
+      let out = "";
+      if(type === "maint") out = buildMaintKO();
+      else if(type === "done") out = buildDoneKO();
+      else out = buildIssueKO();
+      renderSingleKO(out);
+      // (알림 팝업 제거) 콘솔 로그로만 확인합니다.
+    }
+  }
+
+</script>
+</body>
+</html>
