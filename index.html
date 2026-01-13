@@ -555,44 +555,6 @@ async function translateFromKO(koreanNotice, langs){
 }
 
 
-      const sentences = sentenceSplit(s);
-      const k = Math.max(targetParaCount, 1);
-
-      const rebuilt = [];
-      let i = 0;
-      for(let p = 0; p < k; p++){
-        // ensure we don't leave remaining paragraphs empty
-        const remainingParas = k - p;
-        const remainingSent = sentences.length - i;
-        const take = (p === k - 1) ? remainingSent : Math.max(1, Math.floor(remainingSent / remainingParas));
-        rebuilt.push(sentences.slice(i, i + take).join(" "));
-        i += take;
-        if(i >= sentences.length) break;
-      }
-      // If still fewer paragraphs, pad by splitting the last paragraph
-      while(rebuilt.length < k && rebuilt.length){
-        rebuilt.push(rebuilt[rebuilt.length-1]);
-      }
-      return rebuilt.slice(0, k).join("\n\n");
-    };
-
-    try{
-      const parsed = JSON.parse(content);
-      const fixed = {};
-      for(const t of targets){
-        if(parsed && parsed[t] && typeof parsed[t].notice === "string"){
-          fixed[t] = { notice: enforceParas(parsed[t].notice) };
-        }else{
-          fixed[t] = { notice: "" };
-        }
-      }
-      return fixed;
-    }catch(e){
-      console.error("translateFromKO JSON parse failed:", e, content);
-      return null;
-    }
-  }
-
 function buildMaintTextKO(payload){
     const p1 = `안녕하세요 ${payload.userTitle}, ${payload.speaker}입니다.`;
 
@@ -1225,6 +1187,10 @@ ${rows.join("\n")}`.trim();
     }
   }
 
+
+  // expose safeGenerate for the button
+  window.__safeGenerate = safeGenerate;
+})();
 </script>
 </body>
 </html>
