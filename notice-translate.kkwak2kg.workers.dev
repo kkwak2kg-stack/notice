@@ -518,55 +518,35 @@ function enforceParagraphStructure(srcKO, translated){
 }
 
 async function translateFromKO(koreanNotice, langs){
-    const targets = (langs || []).filter(l => l !== "KO");
-    if(!targets.length) return null;
+  const targets = (langs || []).filter(l => l !== "KO");
+  if(!targets.length) return null;
 
-    const koParas = String(koreanNotice || "").split(/\n\s*\n/).filter(Boolean);
-    const targetParaCount = Math.max(koParas.length, 1);
+  const res = await fetch("https://notice-translate.kkwak2kg.workers.dev", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: String(koreanNotice || ""),
+      targetLangs: targets.map(t => String(t).toLowerCase()) // ["en","ja"]
+    }),
+  });
 
-    const systemMsg = [
-      "You are a professional game operations localization specialist.",
-      "Translate the given Korean game notice into the requested target languages.",
-      "Requirements:",
-      "- Preserve the SAME paragraph structure and blank lines as the Korean notice.",
-      "- Output MUST keep paragraph breaks using two newlines (\\n\\n).",
-      "- Keep tone professional and natural for a game notice.",
-      "- Do NOT add new information.",
-      "- Do NOT include placeholders like (을/를). Use correct, natural grammar.",
-      "- Output MUST be valid JSON ONLY.",
-      "",
-      "Return JSON with keys for each target language. Example:",
-      "{\"EN\":{\"notice\":\"...\"},\"JA\":{\"notice\":\"...\"}}"
-    ].join("\\n");
+  if(!res.ok){
+    const errText = await res.text().catch(() => "");
+    throw new Error("translate worker failed: " + res.status + " " + errText);
+  }
 
-    const userMsg = [
-      "Korean notice (paragraphs separated by blank lines):",
-      koreanNotice,
-      "",
-      "Target languages: " + targets.join(", "),
-      "",
-      "IMPORTANT: Your translated notice MUST contain the same number of paragraphs as the Korean notice.",
-      "Use \\n\\n between paragraphs. Do not collapse into a single line."
-    ].join("\\n");
+  const data = await res.json();
 
-    const content = await callGroq(systemMsg, userMsg);
+  // 기존 코드가 기대하는 형태: { EN:{notice:"..."}, JA:{notice:"..."} }
+  const out = {};
+  for(const t of targets){
+    const key = String(t).toUpperCase();   // "EN"/"JA"
+    const lk  = String(t).toLowerCase();   // "en"/"ja"
+    out[key] = { notice: (data && typeof data[lk] === "string") ? data[lk] : "" };
+  }
+  return out;
+}
 
-    const enforceParas = (outText) => {
-      const s = String(outText || "").trim();
-      if(!s) return "";
-      const paras = s.split(/\n\s*\n/).filter(Boolean);
-      if(paras.length >= targetParaCount) return s; // already good enough
-
-      // If model collapsed to one paragraph, rebuild paragraphs deterministically
-      const sentenceSplit = (txt) => {
-        // EN: . ! ?  /  JA: 。！？ 
-        const parts = txt
-          .replace(/\s+/g, " ")
-          .split(/(?<=[\.!\?])\s+|(?<=[。！？])\s*/u)
-          .map(x => x.trim())
-          .filter(Boolean);
-        return parts.length ? parts : [txt.trim()];
-      };
 
       const sentences = sentenceSplit(s);
       const k = Math.max(targetParaCount, 1);
