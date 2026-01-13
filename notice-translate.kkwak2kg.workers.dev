@@ -448,7 +448,15 @@ function renderResults(map){
     );
     const whenDom = (document.getElementById("issueDt") && document.getElementById("issueDt").value) || "";
     const when = String(whenRaw || whenDom || "").trim();
-    const phenomenon = (String(payload.issueDesc || payload.phenomenon || payload.phenomenonText || "")).trim() || "접속 불가 현상";
+    const phenomenon = String(
+  payload.issueDesc
+  || payload.issue
+  || payload.issueText
+  || payload.phenomenon
+  || payload.phenomenonText
+  || ""
+).trim();
+
     const impactSure = (payload.impactSure || payload.isImpactSure || payload.impactConfirmed || "예") === "예";
     const includeApology = (payload.includeApology !== undefined) ? !!payload.includeApology : true;
     const extra = (String(payload.impactText || payload.extraImpact || "")).trim();
