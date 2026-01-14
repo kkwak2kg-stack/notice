@@ -66,7 +66,7 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Professional Notice Master v40.7 (Groq-only 번역 + 키 sanitize + worker-block)</title>
+  <title>Professional Notice Master v40.8 (Groq-only 번역 + 키 sanitize + worker-block)</title>
 
   <style>
     body { background-color:#0f172a; color:#f8fafc; font-family:'Pretendard',system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif; display:flex; justify-content:center; padding:20px; }
@@ -119,16 +119,25 @@
 
 <body>
 <div class="container">
-  <h1>🎮 Professional Notice Master v40.7</h1>
+  <h1>🎮 Professional Notice Master v40.8</h1>
   <div class="sub">
     예전 UI 유지 + <b>[object Object]</b> 완전 제거 + <b>Issue 구조(현상→사과→조치→추가 안내)</b> 고정<br/>
     다국어(EN/JA)는 <b>Groq API로만 번역</b>합니다. (워커 호출 X → CORS 오류 제거)
   </div>
 
   <div class="warnbox">
-    <b>필수</b>: 다국어 번역은 Groq 키가 있어야 합니다.<br/>
-    콘솔에서 1회 실행: <code>localStorage.setItem("GROQ_API_KEY","gsk_...")</code><br/>
-    ※ 키는 공백/줄바꿈/한글이 섞이면 실패할 수 있어 자동으로 정리(sanitize)합니다.
+    <b>필수</b>: 다국어 번역은 <b>유효한 Groq API Key</b>가 있어야 합니다.<br/>
+    아래에 키를 붙여넣고 <b>저장</b>을 누르세요. (콘솔 없이 사용 가능)<br/>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+      <input id="groqKeyInput" type="password" placeholder="gsk_로 시작하는 Groq API Key" style="flex:1; min-width:260px; padding:12px; border-radius:12px; border:1px solid #334155; background:#0f172a; color:#fff;">
+      <button type="button" id="btnSaveKey" style="padding:12px 14px; border-radius:12px; border:1px solid #334155; background:#334155; color:#fff; font-weight:900; cursor:pointer;">저장</button>
+      <button type="button" id="btnClearKey" style="padding:12px 14px; border-radius:12px; border:1px solid rgba(251,113,133,.35); background:rgba(251,113,133,.12); color:#fff; font-weight:900; cursor:pointer;">삭제</button>
+      <button type="button" id="btnTestKey" style="padding:12px 14px; border-radius:12px; border:1px solid rgba(165,180,252,.35); background:rgba(165,180,252,.14); color:#fff; font-weight:900; cursor:pointer;">키 테스트</button>
+    </div>
+    <div class="helper" id="keyHint" style="margin-top:8px;">
+      · Groq 키는 보통 <code>gsk_</code>로 시작하며 길이가 충분히 깁니다. (예: 40자 이상)<br/>
+      · 지금 저장된 키 상태는 상단 <b>번역</b> 배지에 표시됩니다.
+    </div>
   </div>
 
   <div class="row" style="margin-top:18px;">
@@ -321,7 +330,7 @@
   // =========================
   const LS_KEY_NAME = "GROQ_API_KEY";
   const GROQ_MODEL_CANDIDATES = ["llama3-70b-8192", "llama-3.1-70b-versatile", "llama3-8b-8192"];
-  const APP_VERSION = "v40.7";
+  const APP_VERSION = "v40.8";
   console.log("[NoticeMaster]", APP_VERSION, "loaded");
 
   // ✅ 방어막: 어떤 코드가 남아있더라도 워커(translate) 호출은 차단 (CORS 소음 제거)
@@ -353,6 +362,51 @@
       .replace(/\s+/g, "")
       .replace(/[^\x20-\x7E]/g, "");
   }
+
+  function isLikelyValidGroqKey(key){
+    const k = (key || "").trim();
+    // gsk_ 로 시작 + 충분히 긴 길이(placeholder/부분키 차단)
+    return /^gsk_[\x20-\x7E]+$/.test(k) && k.length >= 40;
+  }
+
+  function setKeyUiFromStorage(){
+    const input = document.getElementById("groqKeyInput");
+    if(input){
+      // 보안상 전체 노출은 피하고, 입력란은 비워둡니다.
+      input.value = "";
+      input.placeholder = isLikelyValidGroqKey(getApiKey())
+        ? "Groq 키가 저장되어 있습니다 (재설정하려면 여기에 붙여넣기)"
+        : "gsk_로 시작하는 Groq API Key";
+    }
+  }
+
+  async function testGroqKey(){
+    const k = getApiKey();
+    if(!isLikelyValidGroqKey(k)){
+      setTranslatePill("번역: Groq 키 필요", "bad");
+      alert("Groq API Key가 비어있거나 형식/길이가 올바르지 않습니다. (gsk_로 시작, 40자 이상)");
+      return;
+    }
+    try{
+      setTranslatePill("번역: 키 테스트", "info");
+      const res = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { "Authorization": "Bearer " + k }
+      });
+      if(res.ok){
+        setTranslatePill("번역: 키 정상", "ok");
+        alert("Groq 키가 정상입니다. (번역 가능)");
+      }else{
+        setTranslatePill("번역: 키 오류", "bad");
+        const t = await res.text().catch(()=> "");
+        alert("Groq 키가 유효하지 않습니다. (HTTP " + res.status + ")\n" + t);
+      }
+    }catch(e){
+      setTranslatePill("번역: 테스트 실패", "bad");
+      alert("키 테스트 중 네트워크 오류가 발생했습니다. 콘솔을 확인해 주세요.");
+      console.error(e);
+    }
+  }
+
 
   // ✅ 안전 문자열화: [object Object] 완전 제거
   function safeToText(value){
@@ -736,6 +790,55 @@ Return only the translated text.`;
     try{ toggleSections(); }catch(e){}
   }
   document.addEventListener("DOMContentLoaded", initUI);
+  // Groq Key UI wiring
+  document.addEventListener("DOMContentLoaded", () => {
+    const btnSave = document.getElementById("btnSaveKey");
+    const btnClear = document.getElementById("btnClearKey");
+    const btnTest = document.getElementById("btnTestKey");
+    const input = document.getElementById("groqKeyInput");
+
+    function updatePillFromKey(){
+      const k = getApiKey();
+      if(isLikelyValidGroqKey(k)) setTranslatePill("번역: Groq 키 저장됨", "ok");
+      else setTranslatePill("번역: Groq 키 필요", "warn");
+      setKeyUiFromStorage();
+    }
+
+    if(btnSave){
+      btnSave.addEventListener("click", () => {
+        const raw = (input && input.value) ? input.value : "";
+        // 저장 시에도 sanitize 적용
+        const cleaned = String(raw)
+          .trim()
+          .replace(/^["']|["']$/g, "")
+          .replace(/\s+/g, "")
+          .replace(/[^\x20-\x7E]/g, "");
+        localStorage.setItem(LS_KEY_NAME, cleaned);
+        if(isLikelyValidGroqKey(cleaned)){
+          alert("Groq 키를 저장했습니다.");
+        }else{
+          alert("키를 저장했지만 형식/길이가 유효하지 않습니다. (gsk_로 시작, 40자 이상)");
+        }
+        updatePillFromKey();
+      });
+    }
+
+    if(btnClear){
+      btnClear.addEventListener("click", () => {
+        localStorage.removeItem(LS_KEY_NAME);
+        alert("Groq 키를 삭제했습니다.");
+        updatePillFromKey();
+      });
+    }
+
+    if(btnTest){
+      btnTest.addEventListener("click", () => testGroqKey());
+    }
+
+    // initial
+    updatePillFromKey();
+  });
+
 
   // =========================
   // Main generate
@@ -823,10 +926,10 @@ Return only the translated text.`;
       const needTr = langs.filter(l => l !== "KO");
       if(needTr.length){
         const k = getApiKey();
-        if(!k){
+        if(!isLikelyValidGroqKey(k)){
           setTranslatePill("번역: Groq 키 필요", "bad");
           for(const l of needTr){
-            savedResults[l] = { notice: "번역 생성에 실패했습니다. (Groq API Key를 설정해 주세요)\n\n" + koText };
+            savedResults[l] = { notice: "번역 생성에 실패했습니다. (Groq API Key가 비어있거나 유효하지 않습니다: gsk_로 시작, 40자 이상)\n\n" + koText };
           }
         }else{
           try{
