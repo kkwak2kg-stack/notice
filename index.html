@@ -66,7 +66,7 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Professional Notice Master v40.6 (Groq-only 번역 + 키 sanitize)</title>
+  <title>Professional Notice Master v40.7 (Groq-only 번역 + 키 sanitize + worker-block)</title>
 
   <style>
     body { background-color:#0f172a; color:#f8fafc; font-family:'Pretendard',system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif; display:flex; justify-content:center; padding:20px; }
@@ -119,7 +119,7 @@
 
 <body>
 <div class="container">
-  <h1>🎮 Professional Notice Master v40.6</h1>
+  <h1>🎮 Professional Notice Master v40.7</h1>
   <div class="sub">
     예전 UI 유지 + <b>[object Object]</b> 완전 제거 + <b>Issue 구조(현상→사과→조치→추가 안내)</b> 고정<br/>
     다국어(EN/JA)는 <b>Groq API로만 번역</b>합니다. (워커 호출 X → CORS 오류 제거)
@@ -321,6 +321,28 @@
   // =========================
   const LS_KEY_NAME = "GROQ_API_KEY";
   const GROQ_MODEL_CANDIDATES = ["llama3-70b-8192", "llama-3.1-70b-versatile", "llama3-8b-8192"];
+  const APP_VERSION = "v40.7";
+  console.log("[NoticeMaster]", APP_VERSION, "loaded");
+
+  // ✅ 방어막: 어떤 코드가 남아있더라도 워커(translate) 호출은 차단 (CORS 소음 제거)
+  (function blockWorkerTranslate(){
+    const _fetch = window.fetch;
+    if(typeof _fetch !== "function") return;
+    window.fetch = function(input, init){
+      try{
+        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+        if(url && url && url.includes("notice" + "-translate" + ".kkwak2kg" + ".workers" + ".dev")){
+          throw new Error("Worker translate is disabled (Groq-only). Please deploy the latest index.html.");
+        }
+      }catch(e){
+        // if we throw above, it will be caught by caller anyway
+        if(String(e && e.message).includes("Worker translate is disabled")) throw e;
+      }
+      return _fetch.apply(this, arguments);
+    };
+  })();
+
+
 
   function getApiKey(){
     const raw = (localStorage.getItem(LS_KEY_NAME) || "");
