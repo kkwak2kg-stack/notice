@@ -1,611 +1,895 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>공지 생성기 + PUSH 생성기</title>
+  <script>
+  function getSelectedLangsSafe(){
+    const boxes = Array.from(document.querySelectorAll('input.lang[type="checkbox"]'));
+    const langs = boxes.filter(b=>b.checked).map(b=>b.value);
+    return langs.length ? langs : ["KO"];
+  }
+
+  // Minimal click handler (loads early, independent of other scripts)
+  window.__safeGenerate = function(){
+    try{
+      if(typeof window.generate === 'function'){
+        const r = window.generate();
+        // If async, surface errors (async exceptions won't be caught by try/catch)
+        if(r && typeof r.then === 'function'){
+          r.catch((e)=>{
+            console.error(e);
+            alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
+          });
+        }
+        return r;
+      }
+    }catch(e){ console.error(e); }
+    alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
+    return false;
+  };
+
+  function renderResults(map){
+    // map: {KO:text, EN:text, JA:text}
+    const resArea = document.getElementById("resArea");
+    const tabH = document.getElementById("tabH");
+    const tabB = document.getElementById("tabB");
+    if(!resArea || !tabH || !tabB) return;
+    resArea.style.display = "block";
+    const langs = Object.keys(map);
+    tabH.innerHTML = langs.map((l,i)=>`<button class="tab ${i===0?'active':''}" data-lang="${l}">${l}</button>`).join("");
+    tabB.innerHTML = langs.map((l,i)=>`<div class="tab-pane ${i===0?'active':''}" data-lang="${l}"><pre class="out-pre"></pre></div>`).join("");
+    langs.forEach((l)=>{
+      const pane = tabB.querySelector(`.tab-pane[data-lang="${l}"] pre`);
+      if(pane) pane.textContent = map[l] || "";
+    });
+    tabH.querySelectorAll(".tab").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        tabH.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+        tabB.querySelectorAll(".tab-pane").forEach(p=>p.classList.remove("active"));
+        btn.classList.add("active");
+        const l = btn.dataset.lang;
+        tabB.querySelector(`.tab-pane[data-lang="${l}"]`).classList.add("active");
+      });
+    });
+  }
+  </script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Professional Notice Master v40.4 (예전 UI 유지 + [object Object] 제거 + Issue 구조 고정)</title>
   <style>
-    :root{
-      --bg:#0b0f19; --card:#121a2a; --muted:#94a3b8; --text:#e5e7eb;
-      --accent:#60a5fa; --accent2:#34d399; --danger:#fb7185; --border:#23324d;
-      --input:#0f172a;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; padding:24px;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
-      background: radial-gradient(1000px 600px at 10% 0%, rgba(96,165,250,.18), transparent 60%),
-                  radial-gradient(1000px 600px at 90% 10%, rgba(52,211,153,.14), transparent 55%),
-                  var(--bg);
-      color:var(--text);
-    }
-    header{
-      max-width:1100px; margin:0 auto 18px auto;
-      display:flex; align-items:flex-end; justify-content:space-between; gap:12px;
-    }
-    h1{margin:0; font-size:22px; letter-spacing:-.2px}
-    .sub{margin:0; color:var(--muted); font-size:13px}
-    .wrap{max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr; gap:16px}
-    @media (min-width: 980px){
-      .wrap{grid-template-columns: 1fr 1fr}
-    }
-    .card{
-      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-      overflow:hidden;
-    }
-    .card h2{
-      margin:0 0 10px 0; font-size:16px; letter-spacing:-.2px;
-      display:flex; align-items:center; gap:8px;
-    }
-    .pill{
-      font-size:12px; padding:4px 8px; border-radius:999px;
-      border:1px solid var(--border); color:var(--muted);
-      background:rgba(15,23,42,.4);
-    }
-    .grid{display:grid; grid-template-columns:1fr; gap:10px}
-    @media (min-width: 560px){
-      .grid.two{grid-template-columns:1fr 1fr}
-    }
-    label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px 2px}
-    input, textarea, select{
-      width:100%;
-      background:rgba(15,23,42,.8);
-      border:1px solid var(--border);
-      color:var(--text);
-      border-radius:12px;
-      padding:10px 12px;
-      outline:none;
-      transition:.15s border-color, .15s box-shadow;
-      font-size:13px;
-    }
-    textarea{min-height:92px; resize:vertical; line-height:1.45}
-    input:focus, textarea:focus, select:focus{
-      border-color:rgba(96,165,250,.6);
-      box-shadow:0 0 0 4px rgba(96,165,250,.12);
-    }
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:10px}
-    .btns{display:flex; gap:8px; flex-wrap:wrap}
-    button{
-      border:1px solid var(--border);
-      background:rgba(15,23,42,.7);
-      color:var(--text);
-      padding:9px 11px;
-      border-radius:12px;
-      cursor:pointer;
-      font-size:13px;
-      transition:.15s transform, .15s background, .15s border-color;
-      user-select:none;
-    }
-    button:hover{transform: translateY(-1px); border-color: rgba(96,165,250,.55)}
-    button.primary{background:rgba(96,165,250,.18); border-color: rgba(96,165,250,.35)}
-    button.good{background:rgba(52,211,153,.14); border-color: rgba(52,211,153,.35)}
-    button.danger{background:rgba(251,113,133,.12); border-color: rgba(251,113,133,.32)}
-    .hint{font-size:12px; color:var(--muted); margin-top:6px}
-    .out{
-      margin-top:12px;
-      border:1px solid var(--border);
-      background:rgba(2,6,23,.35);
-      border-radius:14px;
-      padding:12px;
-    }
-    .out-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px}
-    .out-title{font-size:12px; color:var(--muted)}
-    pre{
-      margin:0;
-      white-space:pre-wrap;
-      word-break:break-word;
-      font-size:13px;
-      line-height:1.5;
-    }
-    .toast{
-      position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
-      background:rgba(15,23,42,.92);
-      border:1px solid var(--border);
-      padding:10px 12px;
-      border-radius:999px;
-      color:var(--text);
-      font-size:13px;
-      opacity:0;
-      pointer-events:none;
-      transition:.2s opacity, .2s transform;
-    }
-    .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px)}
-    .small-actions{
-      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
-    }
-    .chk{
-      display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px;
-      user-select:none;
-    }
-    .chk input{width:auto; margin:0}
-    footer{
-      max-width:1100px; margin:14px auto 0 auto; color:var(--muted); font-size:12px;
-    }
-    code.k{color:#a7f3d0}
+    body { background-color:#0f172a; color:#f8fafc; font-family:'Pretendard',system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif; display:flex; justify-content:center; padding:20px; }
+    .container { width:100%; max-width:980px; background:#1e293b; padding:40px; border-radius:24px; box-shadow:0 20px 50px rgba(0,0,0,.6); border:1px solid #334155; }
+    h1 { text-align:center; color:#22d3ee; margin:0 0 10px; font-size:26px; font-weight:900; }
+    .sub { text-align:center; color:#94a3b8; margin:0 0 26px; font-size:13px; line-height:1.6; }
+
+    .form-group { margin-bottom:18px; }
+    label { display:block; margin-bottom:10px; color:#94a3b8; font-weight:900; font-size:14px; }
+    input, select, textarea { width:100%; padding:14px; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:12px; box-sizing:border-box; font-size:15px; outline:none; }
+    textarea { resize: vertical; min-height: 90px; }
+    input:focus, select:focus, textarea:focus { border-color:#22d3ee; box-shadow:0 0 0 3px rgba(34,211,238,.18); }
+
+    .row { display:flex; gap:15px; flex-wrap:wrap; }
+    .row > .form-group { flex:1; min-width:250px; }
+
+    .lang-group { display:flex; gap:15px; background:#0f172a; padding:12px 20px; border-radius:12px; border:1px solid #334155; align-items:center; flex-wrap:wrap; }
+    .lang-group label { margin:0; font-size:13px; color:#e2e8f0; font-weight:900; display:flex; align-items:center; gap:8px; }
+    .lang-group input { width:auto; padding:0; }
+
+    .helper { color:#94a3b8; font-size:12px; margin-top:8px; line-height:1.6; }
+
+    .pillbar { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .pill { font-size:12px; color:#94a3b8; border:1px solid #334155; background:#0f172a; padding:8px 10px; border-radius:999px; }
+    .pill.ok { color:#9be7b1; border-color:rgba(155,231,177,.35); }
+    .pill.info { color:#a5b4fc; border-color:rgba(165,180,252,.35); }
+
+    .make-btn { width:100%; padding:20px; background:linear-gradient(135deg,#22d3ee,#0ea5e9); color:#0f172a; border:none; font-weight:900; border-radius:14px; cursor:pointer; font-size:18px; margin-top:10px; }
+    .make-btn:active { transform:translateY(1px); }
+
+    #loading { display:none; text-align:center; color:#22d3ee; margin:18px 0; font-weight:900; }
+
+    .tabs { display:flex; margin-top:26px; gap:6px; }
+    .tab-btn { flex:1; padding:14px; background:#334155; border:none; color:#94a3b8; cursor:pointer; border-radius:12px 12px 0 0; font-weight:900; }
+    .tab-btn.active { background:#22d3ee; color:#0f172a; }
+
+    .result-box { background:#0f172a; padding:28px 30px; border-radius:0 15px 15px 15px; white-space:pre-wrap; min-height:360px; border:1px solid #334155; border-top:none; font-size:16px; line-height:2.15; color:#e2e8f0; }
+
+    .copy-btn { width:100%; padding:16px; background:#475569; color:#fff; border-radius:12px; cursor:pointer; margin-top:16px; font-weight:900; border:none; }
+
+    .hidden { display:none !important; }
+
+    .warnbox { margin: 14px 0 0; padding: 14px 16px; background:#0f172a; border:1px solid rgba(255,211,138,.35); border-left:5px solid #ffd38a; border-radius:12px; color:#e2e8f0; font-size:13px; line-height:1.6; }
+    .warnbox b { color:#ffd38a; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
   </style>
 </head>
-
 <body>
-  <header>
-    <div>
-      <h1>공지 생성기 + PUSH 생성기</h1>
-      <p class="sub">단일 <code class="k">index.html</code> · <code class="k">[object Object]</code> 완전 제거 · Issue 공지 문장 퀄리티(현상→사과→조치→추가 안내)</p>
+<div class="container">
+  <h1>🎮 Professional Notice Master v40.4</h1>
+  <div class="sub">
+    예전 UI 유지 + <b>[object Object]</b> 완전 제거 + <b>Issue 구조(현상→사과→조치→추가 안내)</b> 고정<br/>
+    점검 공지는 <b>“현상 때문에 점검 진행 예정”</b> 인과가 유지되도록 문장 톤을 정리했습니다.
+  </div>
+
+  <div class="warnbox">
+    <b>핵심 수정</b>: 이슈(KO)에서 <code>payload.issue</code>(객체)를 문장에 쓰던 경로를 제거하고,
+    항상 <code>payload.issue.text</code>만 사용합니다. (따라서 <b>[object Object]가 절대 나오지 않음</b>)
+  </div>
+
+  <div class="row" style="margin-top:18px;">
+    <div class="form-group">
+      <label>유저 호칭</label>
+      <input type="text" id="userTitle" value="모험가 여러분">
     </div>
-    <div class="pill">GitHub Pages</div>
-  </header>
+    <div class="form-group">
+      <label>화자명</label>
+      <input type="text" id="speakerName" value="바바">
+      <div class="helper">KO 1문단 고정: <code>안녕하세요 {호칭}, {화자}입니다.</code></div>
+    </div>
+  </div>
 
-  <main class="wrap">
-    <!-- Issue Notice -->
-    <section class="card" id="issueCard">
-      <h2>Issue 공지 생성기 <span class="pill">현상 → 사과 → 조치 → 추가 안내</span></h2>
-
-      <div class="grid two">
-        <div>
-          <label for="issueTitle">공지 제목(선택)</label>
-          <input id="issueTitle" placeholder="예) [안내] 일부 이용자 접속 지연 관련" />
-          <div class="hint">비우면 본문만 생성됩니다.</div>
-        </div>
-        <div>
-          <label for="issueType">상황 유형</label>
-          <select id="issueType">
-            <option value="incident">장애/이슈 공지</option>
-            <option value="maintenance">임시 점검 공지</option>
-          </select>
-          <div class="hint">임시 점검은 “현상 때문에 점검 진행 예정” 인과를 유지합니다.</div>
-        </div>
+  <div class="row">
+    <div class="form-group">
+      <label>언어 선택</label>
+      <div class="lang-group">
+        <label><input type="checkbox" class="lang" value="KO" checked> KO</label>
+        <label><input type="checkbox" class="lang" value="EN"> EN</label>
+        <label><input type="checkbox" class="lang" value="JA"> JA</label>
       </div>
+    </div>
+    <div class="form-group">
+      <label>공지 유형</label>
+      <div class="helper">※ 공지 유형 선택에 따라 관련 입력 항목만 표시됩니다. (일부 환경에서는 자동 숨김이 제한될 수 있습니다.)</div>
+      <select id="noticeType">
+        <option value="issue" selected>이슈 현상 안내</option>
+        <option value="maint">점검 안내</option>
+        <option value="done">조치 완료 안내</option>
+      </select>
+    </div>
+  </div>
 
-      <div class="grid two">
-        <div>
-          <label for="issueWhen">발생/인지 시각(선택)</label>
-          <input id="issueWhen" placeholder="예) 1/14(수) 10:20" />
-        </div>
-        <div>
-          <label for="issueScope">영향 범위(선택)</label>
-          <input id="issueScope" placeholder="예) 일부 이용자 / iOS / 특정 지역 / 결제" />
-        </div>
+  <div class="row">
+    <div class="form-group">
+      <label>일시 형식</label>
+      <select id="dtFormat">
+        <option value="slash">MM/DD HH:MM</option>
+        <option value="korean">M월 D일 HH:MM</option>
+      </select>
+      <div class="pillbar">
+        <span class="pill info" id="pillTemplate">템플릿: -</span>
+        <span class="pill ok" id="pillApology">사과: 기본 포함</span>
       </div>
+    </div>
+    <div class="form-group" style="display:none;">
+      <label>점검 문장 스타일</label>
+      <select id="fixVerb">
+        <option value="수정" selected>수정</option>
+        <option value="해결">해결</option>
+      </select>
+      <div class="helper">2문단에 사용: <code>현상 수정/해결을 위해 …</code></div>
+    </div>
+  </div>
 
-      <div class="grid">
-        <div>
-          <label for="issueSymptom">현상(필수)</label>
-          <textarea id="issueSymptom" placeholder="예) 게임 접속이 지연되거나 간헐적으로 접속이 종료되는 현상이 발생하고 있습니다."></textarea>
-        </div>
-        <div>
-          <label for="issueApology">사과 문장(선택, 미입력 시 자동)</label>
-          <textarea id="issueApology" placeholder="예) 이용에 불편을 드려 대단히 죄송합니다."></textarea>
-        </div>
-        <div>
-          <label for="issueAction">조치/진행 상황(필수)</label>
-          <textarea id="issueAction" placeholder="예) 원인 파악 및 안정화 조치를 진행 중이며, 현재 서버 부하 완화 작업을 수행하고 있습니다."></textarea>
-        </div>
-        <div>
-          <label for="issueExtra">추가 안내(필수)</label>
-          <textarea id="issueExtra" placeholder="예) 정상화 시 본 공지를 통해 추가 안내드리겠습니다."></textarea>
-        </div>
+  <!-- 점검 -->
+  <div id="maintSection" class="hidden">
+    <div class="row">
+      <div class="form-group">
+        <label>점검 종류</label>
+        <select id="maintKind" onchange="syncMaintSubtitle();">
+          <option value="긴급" selected>긴급 점검</option>
+          <option value="임시">임시 점검</option>
+          <option value="정기">정기 점검</option>
+        </select>
       </div>
-
-      <div class="grid">
-        <div>
-          <label for="issuePayload">참고 데이터/로그 payload (선택, 객체여도 안전)</label>
-          <textarea id="issuePayload" placeholder='예) {"region":"KR","error":{"code":503,"message":"timeout"}} 또는 그냥 텍스트도 가능'></textarea>
-          <div class="hint">여기 값이 객체/JSON/배열/텍스트여도 <b>[object Object]</b>가 절대 나오지 않게 안전하게 문자열화합니다.</div>
-        </div>
+      <div class="form-group">
+        <label>점검 상태</label>
+        <select id="maintStatus" onchange="syncMaintSubtitle();">
+          <option value="planned" selected>진행 예정</option>
+          <option value="ongoing">진행 중</option>
+        </select>
       </div>
+    </div>
 
-      <div class="row">
-        <div class="small-actions">
-          <label class="chk"><input type="checkbox" id="issueIncludeMeta" checked /> 시간/범위가 있으면 본문에 포함</label>
-          <label class="chk"><input type="checkbox" id="issueIncludePayload" /> payload를 본문 하단에 포함</label>
-        </div>
-        <div class="btns">
-          <button class="primary" id="btnIssueGen">생성</button>
-          <button class="good" id="btnIssueCopy">복사</button>
-          <button class="danger" id="btnIssueReset">리셋</button>
-        </div>
+    <div class="form-group">
+      <label>점검 목적</label>
+      <input type="text" id="maintPurpose" placeholder="예: 배너 미노출 현상 수정 / 캐릭터 생성 불가">
+      <div class="helper">※ 입력 끝의 “수정/해결/조치”는 자동 정리됩니다. (중복 방지)</div>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>상세 블록 소제목(대괄호 자동 처리)</label>
+        <input type="text" id="maintSubtitle" value="긴급 점검 진행 예정 안내">
+        <div class="helper">출력: <code>[긴급 점검 진행 예정 안내]</code></div>
       </div>
-
-      <div class="out" aria-live="polite">
-        <div class="out-head">
-          <div class="out-title">생성 결과</div>
-          <div class="pill" id="issueLen">0 chars</div>
-        </div>
-        <pre id="issueOut"></pre>
+      <div class="form-group">
+        <label>점검 내용(선택)</label>
+        <input type="text" id="maintContent" placeholder="예: 배너 미노출 현상 수정">
       </div>
-    </section>
+    </div>
 
-    <!-- PUSH -->
-    <section class="card" id="pushCard">
-      <h2>PUSH 생성기 <span class="pill">짧고 명확하게</span></h2>
-
-      <div class="grid two">
-        <div>
-          <label for="pushType">PUSH 타입</label>
-          <select id="pushType">
-            <option value="notice">공지/안내</option>
-            <option value="event">이벤트</option>
-            <option value="maintenance">점검 안내</option>
-            <option value="hotfix">핫픽스/업데이트</option>
-          </select>
-        </div>
-        <div>
-          <label for="pushTone">톤</label>
-          <select id="pushTone">
-            <option value="neutral">중립</option>
-            <option value="friendly">친근</option>
-            <option value="urgent">긴급</option>
-          </select>
-        </div>
+    <div class="row">
+      <div class="form-group">
+        <label>점검 시작</label>
+        <input type="datetime-local" id="maintStart">
       </div>
-
-      <div class="grid">
-        <div>
-          <label for="pushTitle">PUSH 제목(필수)</label>
-          <input id="pushTitle" placeholder="예) 접속 지연 현상 안내" />
-        </div>
-        <div class="grid two">
-          <div>
-            <label for="pushBody">PUSH 본문(필수)</label>
-            <textarea id="pushBody" placeholder="예) 일부 이용자에게 접속 지연이 발생하고 있어 조치 중입니다. 자세한 내용은 공지를 확인해주세요."></textarea>
-          </div>
-          <div>
-            <label for="pushCta">CTA/링크 문구(선택)</label>
-            <input id="pushCta" placeholder="예) 공지 확인하기" />
-            <div class="hint">플랫폼에 따라 버튼/딥링크 문구로 사용 가능합니다.</div>
-
-            <div style="height:10px"></div>
-
-            <label for="pushDeepLink">딥링크/URL(선택)</label>
-            <input id="pushDeepLink" placeholder="예) app://notice/123 또는 https://..." />
-          </div>
-        </div>
-
-        <div>
-          <label for="pushPayload">추가 데이터 payload (선택, 객체여도 안전)</label>
-          <textarea id="pushPayload" placeholder='예) {"screen":"notice","id":123} 또는 텍스트'></textarea>
-          <div class="hint">출력 시 JSON 문자열로 안전 변환됩니다.</div>
-        </div>
+      <div class="form-group">
+        <label>점검 종료</label>
+        <input type="datetime-local" id="maintEnd">
       </div>
+    </div>
 
-      <div class="row">
-        <div class="small-actions">
-          <label class="chk"><input type="checkbox" id="pushIncludePayload" /> payload 포함</label>
-          <label class="chk"><input type="checkbox" id="pushCompact" checked /> 줄바꿈 최소화(컴팩트)</label>
-        </div>
-        <div class="btns">
-          <button class="primary" id="btnPushGen">생성</button>
-          <button class="good" id="btnPushCopy">복사</button>
-          <button class="danger" id="btnPushReset">리셋</button>
-        </div>
+    <div class="row">
+      <div class="form-group">
+        <label>이용 영향(선택)</label>
+        <input type="text" id="impact" placeholder="예: 점검 시간 동안 게임 접속이 제한될 수 있습니다">
       </div>
-
-      <div class="out" aria-live="polite">
-        <div class="out-head">
-          <div class="out-title">생성 결과</div>
-          <div class="pill" id="pushLen">0 chars</div>
-        </div>
-        <pre id="pushOut"></pre>
+      <div class="form-group">
+        <label>이용 영향 문장 포함</label>
+        <select id="impactInclude">
+          <option value="no" selected>미포함(기본)</option>
+          <option value="yes">포함</option>
+        </select>
+        <div class="helper">포함 시 3문단 마지막에 1문장으로만 들어갑니다.</div>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
 
-  <footer>
-    <div>· <b>[object Object]</b> 방지: 모든 출력 값은 내부에서 <code class="k">safeToText()</code>로 문자열화됩니다.</div>
-    <div>· Issue 공지 구조: <b>현상 → 사과 → 조치 → 추가 안내</b> 고정 (임시 점검은 “현상 때문에 점검 진행 예정” 인과 유지)</div>
-  </footer>
+  <!-- 이슈 -->
+  <div id="issueSection">
+    <div class="row">
+      <div class="form-group">
+        <label>이용 영향이 확실한가요?</label>
+        <select id="impactSure">
+          <option value="yes" selected>예 (사과 포함)</option>
+          <option value="no">아니오 (사과 미포함)</option>
+        </select>
+        <div class="helper">이슈 공지의 사과 문구 포함 여부를 결정합니다.</div>
+      </div>
+      <div class="form-group">
+        <label> </label>
+        <div class="helper" style="margin-top:30px;"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="form-group">
+        <label>발생/확인 일시</label>
+        <input type="datetime-local" id="issueDt">
+      </div>
+      <div class="form-group">
+        <label>현상 입력</label>
+        <input type="text" id="issueText" placeholder="예: 접속 불가 현상">
+      </div>
+    </div>
+  </div>
 
-  <div class="toast" id="toast"></div>
+  <!-- 조치완료 -->
+  <div id="doneSection" class="hidden">
+    <div class="row">
+      <div class="form-group">
+        <label>이용 영향이 확실한가요?</label>
+        <select id="doneImpactSure">
+          <option value="yes" selected>예 (사과 포함)</option>
+          <option value="no">아니오 (사과 미포함)</option>
+        </select>
+        <div class="helper">조치 완료 공지의 사과 문구 포함 여부를 결정합니다.</div>
+      </div>
+      <div class="form-group">
+        <label> </label>
+        <div class="helper" style="margin-top:30px;"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="form-group">
+        <label>조치 대상 현상</label>
+        <input type="text" id="doneIssue" placeholder="예: 패키지 구매 불가 현상">
+      </div>
+      <div class="form-group">
+        <label>조치 완료 시각(선택)</label>
+        <input type="datetime-local" id="doneDt">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>추가 안내(선택)</label>
+      <input type="text" id="doneExtra" placeholder="예: 현재는 정상적으로 이용하실 수 있습니다">
+    </div>
+  </div>
 
-  <script>
-    // =========================
-    // [object Object] 완전 제거를 위한 안전 문자열화
-    // =========================
-    function safeToText(value) {
-      // null/undefined
-      if (value === null) return "null";
-      if (value === undefined) return "";
+  <button class="make-btn" onclick="return window.__safeGenerate && window.__safeGenerate()">공지 생성</button>
+  <div id="loading">🤖 생성 중...</div>
 
-      // already string
-      if (typeof value === "string") return value;
+  <div id="resArea" style="display:none;">
+    <div class="tabs" id="tabH"></div>
+    <div class="result-box" id="tabB"></div>
+    <button class="copy-btn" onclick="copyAll()">공지 본문 복사</button>
+  </div>
+</div>
 
-      // primitive
-      if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
-        return String(value);
+<script>
+  const LS_KEY_NAME = "GROQ_API_KEY";
+  function getApiKey(){ return (localStorage.getItem(LS_KEY_NAME) || "").trim(); }
+
+  // ✅ 안전 문자열화: [object Object] 완전 제거 (순환참조/함수/BigInt 방어)
+  function safeToText(value){
+    if(value === null) return "null";
+    if(value === undefined) return "";
+    if(typeof value === "string") return value;
+    if(typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
+    if(value instanceof Date) return value.toISOString?.() || String(value);
+    if(value instanceof Error) return value.stack || value.message || String(value);
+    try{
+      const seen = new WeakSet();
+      const json = JSON.stringify(value, (k,v)=>{
+        if(typeof v === "bigint") return v.toString();
+        if(typeof v === "function") return `[Function${v.name ? ":"+v.name : ""}]`;
+        if(typeof v === "object" && v !== null){
+          if(seen.has(v)) return "[Circular]";
+          seen.add(v);
+        }
+        return v;
+      }, 2);
+      return (json === undefined) ? "[Unserializable]" : json;
+    }catch{
+      const tag = Object.prototype.toString.call(value);
+      return tag === "[object Object]" ? "[Unserializable Object]" : tag;
+    }
+  }
+
+  // ✅ DOM 전역변수(id->window) 호환
+  const $ = (id)=>document.getElementById(id);
+  function bindGlobals(){
+    const ids = [
+      "noticeType","loading","resArea","tabH","tabB","pillTemplate","pillApology",
+      "dtFormat","userTitle","speakerName",
+      // issue
+      "issueDt","issueText","impact","impactSure",
+      // maint
+      "maintKind","maintStatus","maintPurpose","maintSubtitle","maintContent","maintStart","maintEnd","impactInclude",
+      // done
+      "doneIssue","doneDt","doneExtra","doneImpactSure",
+      // style
+      "fixVerb"
+    ];
+    ids.forEach(id=>{ const el = $(id); if(el) window[id]=el; });
+  }
+  document.addEventListener("DOMContentLoaded", bindGlobals);
+
+  let savedResults = {};
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function formatDT(dtStr, fmt){
+    if(!dtStr) return "";
+    const d = new Date(dtStr);
+    if(Number.isNaN(d.getTime())) return "";
+    const m = d.getMonth()+1;
+    const day = d.getDate();
+    const hh = pad2(d.getHours());
+    const mm = pad2(d.getMinutes());
+    if(fmt === "korean") return `${m}월 ${day}일 ${hh}:${mm}`;
+    return `${pad2(m)}/${pad2(day)} ${hh}:${mm}`;
+  }
+  function diffText(startStr, endStr){
+    if(!startStr || !endStr) return "";
+    const s = new Date(startStr);
+    const e = new Date(endStr);
+    if(Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return "";
+    let mins = Math.round((e - s) / 60000);
+    if(mins <= 0) return "";
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if(h > 0 && m > 0) return `(${h}시간 ${m}분)`;
+    if(h > 0) return `(${h}시간)`;
+    return `(${m}분)`;
+  }
+
+  function syncMaintSubtitle(){
+    const kind = maintKind.value;
+    const status = maintStatus.value === "planned" ? "진행 예정 안내" : "진행 안내";
+    maintSubtitle.value = `${kind} 점검 ${status}`;
+  }
+
+  function refreshPills(){
+    pillTemplate.textContent = "템플릿: " + noticeType.options[noticeType.selectedIndex].text;
+  }
+
+  function cleanBracketTitle(s){
+    if(!s) return "";
+    let t = String(s).trim();
+    if((t.startsWith("[") && t.endsWith("]")) || (t.startsWith("(") && t.endsWith(")"))){
+      t = t.slice(1,-1).trim();
+    }
+    return t;
+  }
+
+  // 목적 정규화: 끝의 "수정/해결/조치" 제거
+  function normalizePurpose(purpose){
+    return String(purpose || "").replace(/\s*(수정|해결|조치)\s*$/g, "").trim();
+  }
+
+  // "현상" 중복 방지
+  function ensurePhenomenonPhrase(base){
+    const t = String(base || "").trim();
+    if(!t) return "";
+    if(t.endsWith("현상")) return t;
+    return t + " 현상";
+  }
+
+  function buildMaintBlock(subtitle, windowText, content){
+    const sub = cleanBracketTitle(subtitle) || "점검 안내";
+    const cont = (content || "").trim();
+    return `[${sub}]\n- 진행 일시: ${windowText}\n- 점검 내용: ${cont}\n\n점검이 안내해 드린 시간보다 조기 종료되거나 연장될 경우 별도 공지를 통해 다시 한번 안내해 드리겠습니다.`;
+  }
+
+  // ✅ 조사 자동 선택
+  function josa(word, pair){
+    const w = (word||"").trim();
+    if(!w) return pair.split("/")[0];
+    const last = w.charCodeAt(w.length-1);
+    const isHangul = (last >= 0xAC00 && last <= 0xD7A3);
+    if(!isHangul) return pair.split("/")[0];
+    const jong = (last - 0xAC00) % 28;
+    const hasJong = jong !== 0;
+    const [a,b] = pair.split("/");
+    if(pair==="으로/로"){
+      return (!hasJong || jong===8) ? b : a;
+    }
+    return hasJong ? a : b;
+  }
+
+  // ✅ KO 이슈 공지: 구조 고정(현상→사과→조치→추가 안내) + 객체 문자열화 방지
+  function buildIssueTextKO(payload){
+    const caller = safeToText((payload.speaker||payload.caller||"").trim() || "바바");
+    const honor  = safeToText((payload.userHonor||payload.honor||payload.userTitle||"").trim() || "모험가 여러분");
+    const dtFmt  = payload.dtFormat || "slash";
+
+    // 시간: payload.issue.dtRaw 우선, 없으면 DOM 값
+    const whenDom = ($("issueDt") && $("issueDt").value) || "";
+    const issueObj = (payload && payload.issue && typeof payload.issue === "object") ? payload.issue : {};
+    const whenRaw = issueObj.dtRaw || payload.issueDt || payload.issueAt || payload.when || whenDom || "";
+    const timeStr = formatDT(whenRaw, dtFmt);
+    const timeStrSafe = safeToText(timeStr || String(whenRaw || "").trim()).trim();
+
+    // ✅ 현상: 반드시 "payload.issue.text" 우선 (객체 payload.issue 자체를 절대 쓰지 않음)
+    const phenomenonRaw =
+      issueObj.text ||
+      payload.issueText ||
+      payload.issueDesc ||
+      payload.phenomenon ||
+      payload.phenomenonText ||
+      "";
+    const phenomenon = safeToText(phenomenonRaw).trim();
+
+    const impactSureVal = (issueObj.apology || payload.impactSure || "yes");
+    const impactSure = String(impactSureVal).toLowerCase() !== "no";
+
+    const includeApology = (payload.includeApology !== undefined) ? !!payload.includeApology : true;
+
+    const g = josa(phenomenon, "이/가");
+
+    const lines = [];
+    lines.push(`안녕하세요 ${honor}, ${caller}입니다.`);
+    lines.push("");
+
+    // 1) 현상
+    if(timeStrSafe){
+      lines.push(`${timeStrSafe}부터 ${phenomenon || "일부 현상"}${g} 발생하여 안내해 드립니다.`);
+    }else{
+      lines.push(`${phenomenon || "일부 현상"}${g} 발생하여 안내해 드립니다.`);
+    }
+    lines.push("");
+
+    // 2) 사과
+    if(includeApology && impactSure){
+      lines.push(`해당 현상으로 이용에 불편을 드려 죄송하다는 말씀을 드립니다.`);
+      lines.push("");
+    }else if(includeApology){
+      lines.push(`이용에 혼선을 드려 죄송합니다.`);
+      lines.push("");
+    }
+
+    // 3) 조치
+    lines.push(`현재 원인 파악 및 조치를 진행 중이며, 원활한 이용이 가능하도록 신속히 처리하겠습니다.`);
+    lines.push("");
+
+    // 4) 추가 안내
+    lines.push(`이후 진행되는 사항에 대해서는 별도 공지를 통해 다시 한번 안내해 드리겠습니다.`);
+    lines.push("");
+    lines.push("감사합니다.");
+
+    return lines.join("\n");
+  }
+
+  function buildMaintTextKO(payload){
+    const p1 = `안녕하세요 ${safeToText(payload.userTitle)}, ${safeToText(payload.speaker)}입니다.`;
+
+    const rawPurpose = payload.maint.purpose;
+    const base = normalizePurpose(rawPurpose) || rawPurpose;
+    const subject = ensurePhenomenonPhrase(base);
+
+    const kind = payload.maint.kind;
+    const status = payload.maint.status;
+    const verb = (payload.maint.fixVerb === "해결") ? "해결" : "수정"; // 기본 수정
+    const startFmt = formatDT(payload.maint.startRaw, payload.dtFormat);
+    const endFmt = formatDT(payload.maint.endRaw, payload.dtFormat);
+
+    const timeLead = startFmt ? `${startFmt}부터 ` : "";
+    const timeRangeTail = (startFmt && endFmt) ? `${endFmt}까지 ` : "";
+
+    // ✅ 인과 유지: "현상 때문에 점검 진행 예정"
+    const p2 = (status === "ongoing")
+      ? `${timeLead}${subject} ${verb}을 위해 ${kind} 점검이 진행되고 있어 안내해 드립니다.`
+      : `${timeLead}${timeRangeTail}${subject} ${verb}을 위해 ${kind} 점검을 진행할 예정임을 안내해 드립니다.`;
+
+    let p3 = `해당 현상으로 이용에 불편을 드려 죄송하다는 말씀을 드리며, 점검을 통해 조치하여 원활한 플레이 환경을 제공해 드릴 수 있도록 노력하겠습니다.`;
+
+    if(payload.maint.impactInclude === "yes" && payload.maint.impact){
+      const line = payload.maint.impact.trim();
+      if(line) p3 = p3 + `\n${line}`;
+    }
+
+    const block = buildMaintBlock(payload.maint.subtitle, payload.maint.windowText, payload.maint.content || payload.maint.purpose);
+    const p5 = "감사합니다.";
+    return [p1, p2, p3, block, p5].join("\n\n");
+  }
+
+  function buildDoneTextKO(payload){
+    const caller = (payload.speaker||payload.caller||"").trim() || "운영팀";
+    const honor  = (payload.userTitle||payload.honor||"").trim() || "모험가 여러분";
+    const dtFmt  = payload.dtFormat || "slash";
+
+    const done = payload.done || {};
+    const issueRaw = safeToText(done.issue || done.doneIssue || done.target || done.issueText || "").trim();
+    const issue = issueRaw || "이용 불가 현상";
+
+    const endRaw = done.dtRaw || done.doneDt || done.completedAt || "";
+    const endStr = endRaw ? formatDT(endRaw, dtFmt) : "";
+
+    const issueBlock = payload.issue || {};
+    const startRaw = issueBlock.dtRaw || payload.issueDt || "";
+    const startStr = startRaw ? formatDT(startRaw, dtFmt) : "";
+
+    const extra = safeToText(done.extra || done.doneExtra || done.note || "").trim();
+    const impactSure = (done.impactSure || done.doneImpactSure || done.apology || "yes") === "yes";
+
+    const obj = josa(issue, "을/를");
+
+    const lines = [];
+    lines.push(`안녕하세요 ${honor}, ${caller}입니다.`);
+    lines.push("");
+
+    let core = "";
+    if(startStr && endStr){
+      core = `앞서 안내해 드렸던 ${startStr}부터 발생했던 ${issue}${obj} ${endStr} 경 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else if(startStr){
+      core = `앞서 안내해 드렸던 ${startStr}부터 발생했던 ${issue}${obj} 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else if(endStr){
+      core = `앞서 안내해 드렸던 ${issue}${obj} ${endStr} 경 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`;
+    }else{
+      core = `앞서 안내해 드렸던 ${issue}${obj} 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`;
+    }
+
+    lines.push(core);
+
+    if(extra){
+      lines.push("");
+      lines.push(extra.endsWith(".") ? extra : (extra + "."));
+    }
+
+    lines.push("");
+    if(impactSure){
+      lines.push("해당 현상으로 인해 이용에 불편을 드려 죄송하다는 말씀을 드리며,");
+    }
+    lines.push("앞으로 더 안정적인 서비스 제공을 위해 최선을 다하겠습니다.");
+    lines.push("");
+    lines.push("감사합니다.");
+    return lines.join("\n");
+  }
+
+  function buildKOText(payload){
+    const t = payload.noticeType || payload.type;
+    if(t==="maint") return buildMaintTextKO(payload);
+    if(t==="done") return buildDoneTextKO(payload);
+    return buildIssueTextKO(payload);
+  }
+
+  async function translateFromKO(koreanNotice, langs){
+    const targets = (langs || []).filter(l => l !== "KO");
+    if(!targets.length) return null;
+
+    const res = await fetch("https://notice-translate.kkwak2kg.workers.dev", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: String(koreanNotice || ""),
+        targetLangs: targets.map(t => String(t).toLowerCase())
+      }),
+    });
+
+    if(!res.ok){
+      const errText = await res.text().catch(() => "");
+      throw new Error("translate worker failed: " + res.status + " " + errText);
+    }
+
+    const data = await res.json();
+    const out = {};
+    for(const t of targets){
+      const key = String(t).toUpperCase();
+      const lk  = String(t).toLowerCase();
+      out[key] = { notice: (data && typeof data[lk] === "string") ? data[lk] : "" };
+    }
+    return out;
+  }
+
+  async function generate(){
+    bindGlobals();
+    const __langs = getSelectedLangsSafe();
+    const langs = [...document.querySelectorAll(".lang:checked")].map(e=>e.value);
+    if(!langs.length) return alert("언어를 1개 이상 선택해 주세요.");
+
+    const type = noticeType.value;
+    const dtFmt = dtFormat.value;
+
+    loading.style.display="block";
+    resArea.style.display="none";
+
+    const payload = {
+      type,
+      userTitle: (userTitle.value.trim() || "이용자 여러분"),
+      speaker: (speakerName.value.trim() || "운영팀"),
+      dtFormat: dtFmt,
+      langs,
+      maint: {},
+      issue: {},
+      done: {}
+    };
+
+    // ✅ KO-only 최적 경로 유지
+    if(__langs.length===1 && __langs[0]==="KO"){
+      try{
+        if(type === "maint"){
+          if(!maintPurpose.value.trim()) return alert("점검 목적을 입력해 주세요.");
+          if(!maintStart.value || !maintEnd.value) return alert("점검 시작/종료 시간을 입력해 주세요.");
+
+          payload.maint = {
+            kind: maintKind.value,
+            status: maintStatus.value,
+            purpose: maintPurpose.value.trim(),
+            subtitle: cleanBracketTitle(maintSubtitle.value),
+            content: maintContent.value.trim(),
+            startRaw: maintStart.value,
+            endRaw: maintEnd.value,
+            windowText: `${formatDT(maintStart.value, dtFmt)} ~ ${formatDT(maintEnd.value, dtFmt)} ${diffText(maintStart.value, maintEnd.value)}`.trim(),
+            impact: (impact ? impact.value.trim() : ""),
+            impactInclude: impactInclude.value,
+            fixVerb: fixVerb ? fixVerb.value : "수정"
+          };
+          payload.type = "maint";
+          payload.noticeType = "maint";
+        }else if(type === "issue"){
+          if(!issueDt.value) return alert("발생/확인 일시를 입력해 주세요.");
+          if(!issueText.value.trim()) return alert("현상 입력을 작성해 주세요.");
+
+          // ✅ 여기서도 문자열 필드로 명시 (객체/혼입 방지)
+          payload.issue = {
+            dtRaw: issueDt.value,
+            text: issueText.value.trim(),
+            apology: (impactSure ? impactSure.value : "yes")
+          };
+          payload.issueText = payload.issue.text;
+          payload.issueAt = payload.issue.dtRaw;
+          payload.impactSure = payload.issue.apology;
+
+          payload.type = "issue";
+          payload.noticeType = "issue";
+        }else if(type === "done"){
+          const di = (doneIssue ? doneIssue.value : "").trim();
+          const dd = (doneDt ? doneDt.value : "");
+          if(!di) return alert("조치 대상 현상을 입력해 주세요.");
+
+          payload.done = {
+            issue: di,
+            dtRaw: dd,
+            doneDt: dd,
+            extra: (doneExtra ? doneExtra.value : "").trim(),
+            impactSure: (doneImpactSure ? doneImpactSure.value : "yes")
+          };
+          payload.type = "done";
+          payload.noticeType = "done";
+        }
+
+        const koText = buildKOText(payload);
+        if(typeof renderResults==="function") renderResults({KO: koText});
+      }finally{
+        if(loading) loading.style.display="none";
       }
+      return;
+    }
 
-      // Date
-      if (value instanceof Date) {
-        const t = value.toISOString?.() || String(value);
-        return t;
-      }
+    try{
+      if(type === "maint"){
+        if(!maintPurpose.value.trim()) return alert("점검 목적을 입력해 주세요.");
+        if(!maintStart.value || !maintEnd.value) return alert("점검 시작/종료 시간을 입력해 주세요.");
 
-      // Error
-      if (value instanceof Error) {
-        return value.stack || value.message || String(value);
-      }
+        payload.maint = {
+          kind: maintKind.value,
+          status: maintStatus.value,
+          purpose: maintPurpose.value.trim(),
+          subtitle: cleanBracketTitle(maintSubtitle.value),
+          content: maintContent.value.trim(),
+          startRaw: maintStart.value,
+          endRaw: maintEnd.value,
+          windowText: `${formatDT(maintStart.value, dtFmt)} ~ ${formatDT(maintEnd.value, dtFmt)} ${diffText(maintStart.value, maintEnd.value)}`.trim(),
+          impact: (impact ? impact.value.trim() : ""),
+          impactInclude: impactInclude.value,
+          fixVerb: fixVerb ? fixVerb.value : "수정"
+        };
 
-      // object/array/function => stringify safely
-      try {
-        const seen = new WeakSet();
-        const json = JSON.stringify(value, (k, v) => {
-          if (typeof v === "bigint") return v.toString();
-          if (typeof v === "function") return `[Function${v.name ? ":" + v.name : ""}]`;
-          if (typeof v === "object" && v !== null) {
-            if (seen.has(v)) return "[Circular]";
-            seen.add(v);
+        savedResults = {};
+        const koNotice = buildMaintTextKO(payload);
+        if(langs.includes("KO")) savedResults.KO = { notice: koNotice };
+
+        const nonKo = langs.filter(l => l !== "KO");
+        if(nonKo.length){
+          const tr = await translateFromKO(koNotice, langs);
+          for(const l of nonKo){
+            savedResults[l] = { notice: (tr && tr[l] && typeof tr[l].notice === "string") ? tr[l].notice : "" };
           }
-          return v;
-        }, 2);
-        // JSON.stringify can return undefined for certain values
-        if (json === undefined) return String(value);
-        return json;
-      } catch (e) {
-        // as a last resort, avoid default object toString ([object Object])
-        try {
-          const tag = Object.prototype.toString.call(value); // [object X]
-          return tag === "[object Object]" ? "[Unserializable Object]" : tag;
-        } catch {
-          return "[Unserializable]";
         }
+        renderTabs(langs);
+        return;
       }
-    }
 
-    function tryParseJsonMaybe(text) {
-      const s = (text ?? "").trim();
-      if (!s) return "";
-      // If it looks like JSON, try to parse then re-stringify to normalize
-      const looksJson = (s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"));
-      if (!looksJson) return s; // keep as-is
-      try {
-        const obj = JSON.parse(s);
-        return obj;
-      } catch {
-        // not valid JSON -> keep raw string
-        return s;
-      }
-    }
+      if(type === "issue"){
+        if(!issueDt.value) return alert("발생/확인 일시를 입력해 주세요.");
+        if(!issueText.value.trim()) return alert("현상 입력을 작성해 주세요.");
 
-    // =========================
-    // UI helpers
-    // =========================
-    const $ = (id) => document.getElementById(id);
+        payload.issue = {
+          dtRaw: issueDt.value,
+          text: issueText.value.trim(),
+          apology: (impactSure ? impactSure.value : "yes")
+        };
+        payload.issueText = payload.issue.text;
+        payload.issueAt = payload.issue.dtRaw;
+        payload.impactSure = payload.issue.apology;
 
-    function setOut(preEl, lenEl, text) {
-      preEl.textContent = text || "";
-      lenEl.textContent = `${(text || "").length} chars`;
-    }
+        savedResults = {};
+        // KO 기준문 생성
+        const koBase = buildIssueTextKO(payload);
+        savedResults.KO = { notice: koBase };
 
-    async function copyToClipboard(text) {
-      const t = text || "";
-      try {
-        await navigator.clipboard.writeText(t);
-        toast("클립보드에 복사했어요.");
-      } catch {
-        // fallback
-        const ta = document.createElement("textarea");
-        ta.value = t;
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        try {
-          document.execCommand("copy");
-          toast("클립보드에 복사했어요.");
-        } catch {
-          toast("복사에 실패했어요. 결과를 직접 선택해 복사해주세요.");
-        } finally {
-          document.body.removeChild(ta);
+        const tr = await translateFromKO(koBase, langs);
+        for(const l of langs){
+          if(l === "KO") continue;
+          savedResults[l] = { notice: (tr && tr[l] && tr[l].notice) ? tr[l].notice : "" };
         }
+        if(!langs.includes("KO")) delete savedResults.KO;
+        renderTabs(langs);
+        return;
       }
-    }
 
-    let toastTimer = null;
-    function toast(msg) {
-      const el = $("toast");
-      el.textContent = msg;
-      el.classList.add("show");
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
-    }
+      if(type === "done"){
+        const di = (doneIssue ? doneIssue.value : "").trim();
+        const dd = (doneDt ? doneDt.value : "");
+        if(!di) return alert("조치 대상 현상을 입력해 주세요.");
 
-    // =========================
-    // Issue generator (현상 → 사과 → 조치 → 추가 안내)
-    // =========================
-    function buildIssueNotice() {
-      const title = safeToText($("issueTitle").value).trim();
-      const type = $("issueType").value;
+        payload.done = {
+          issue: di,
+          dtRaw: dd,
+          doneDt: dd,
+          extra: (doneExtra ? doneExtra.value : "").trim(),
+          impactSure: (doneImpactSure ? doneImpactSure.value : "yes")
+        };
 
-      const when = safeToText($("issueWhen").value).trim();
-      const scope = safeToText($("issueScope").value).trim();
+        savedResults = {};
+        const koDone = buildDoneTextKO(payload);
+        savedResults.KO = { notice: koDone };
 
-      const symptomRaw = $("issueSymptom").value;
-      const apologyRaw = $("issueApology").value;
-      const actionRaw = $("issueAction").value;
-      const extraRaw  = $("issueExtra").value;
-
-      const symptom = safeToText(symptomRaw).trim();
-      const apology = safeToText(apologyRaw).trim();
-      const action  = safeToText(actionRaw).trim();
-      const extra   = safeToText(extraRaw).trim();
-
-      const includeMeta = $("issueIncludeMeta").checked;
-      const includePayload = $("issueIncludePayload").checked;
-
-      const payloadInput = $("issuePayload").value;
-      const payloadMaybe = tryParseJsonMaybe(payloadInput);
-      const payloadText = safeToText(payloadMaybe).trim();
-
-      // minimal validation (no alerts; just generate best-effort)
-      const metaBits = [];
-      if (includeMeta && when) metaBits.push(`- 발생/인지 시각: ${when}`);
-      if (includeMeta && scope) metaBits.push(`- 영향 범위: ${scope}`);
-
-      // 사과 문장 자동 생성 (유형에 따라 약간 조정)
-      let autoApology = "이용에 불편을 드려 대단히 죄송합니다.";
-      if (type === "maintenance") autoApology = "이용에 불편을 드려 죄송합니다.";
-
-      // 임시 점검은 ‘현상 때문에 점검 진행 예정’ 인과 유지
-      // => action 파트에 강제로 인과 문장을 보강 (기존 action이 있어도 앞에 붙여 자연스럽게)
-      let actionLine = action;
-      if (type === "maintenance") {
-        const cause = symptom ? symptom : "해당 현상";
-        const causal = `${cause.replace(/\s+/g, " ").trim()}로 인해 임시 점검을 진행할 예정입니다.`;
-        if (actionLine) {
-          // 중복 방지: 이미 "점검" 문구가 있으면 그래도 인과 문장만 앞에 붙임(중복 최소)
-          actionLine = `${causal}\n${actionLine}`;
-        } else {
-          actionLine = causal;
+        const needTr = langs.filter(l => l !== "KO");
+        if(needTr.length){
+          const tr = await translateFromKO(koDone, langs);
+          for(const l of langs){
+            if(l === "KO") continue;
+            savedResults[l] = { notice: (tr && tr[l] && tr[l].notice) ? tr[l].notice : "" };
+          }
         }
+        if(!langs.includes("KO")) delete savedResults.KO;
+        renderTabs(langs);
+        return;
       }
 
-      // Compose with fixed structure
-      const lines = [];
-
-      if (title) lines.push(title, "");
-      lines.push("■ 현상");
-      lines.push(symptom || "(현상을 입력해주세요)");
-      if (metaBits.length) lines.push("", ...metaBits);
-
-      lines.push("", "■ 사과");
-      lines.push(apology || autoApology);
-
-      lines.push("", "■ 조치");
-      lines.push(actionLine || "(조치 내용을 입력해주세요)");
-
-      lines.push("", "■ 추가 안내");
-      lines.push(extra || "(추가 안내를 입력해주세요)");
-
-      if (includePayload && payloadText) {
-        lines.push("", "■ 참고 (payload)");
-        lines.push(payloadText);
-      }
-
-      return lines.join("\n");
+      alert("지원하지 않는 공지 유형입니다.");
+    }catch(e){
+      console.error(e);
+      alert("생성 실패: " + (e?.message || e));
+    }finally{
+      loading.style.display="none";
     }
+  }
+  window.generate = generate;
 
-    // =========================
-    // PUSH generator
-    // =========================
-    function tonePrefix(tone, type) {
-      if (tone === "urgent") {
-        if (type === "maintenance") return "[긴급] ";
-        return "[긴급] ";
-      }
-      if (tone === "friendly") return "";
-      return "";
-    }
-
-    function buildPush() {
-      const type = $("pushType").value;
-      const tone = $("pushTone").value;
-
-      const title = safeToText($("pushTitle").value).trim();
-      const body  = safeToText($("pushBody").value).trim();
-      const cta   = safeToText($("pushCta").value).trim();
-      const link  = safeToText($("pushDeepLink").value).trim();
-
-      const includePayload = $("pushIncludePayload").checked;
-      const compact = $("pushCompact").checked;
-
-      const payloadInput = $("pushPayload").value;
-      const payloadMaybe = tryParseJsonMaybe(payloadInput);
-      const payloadText = safeToText(payloadMaybe).trim();
-
-      // light auto-guard for maintenance wording
-      let refinedBody = body;
-      if (type === "maintenance" && body) {
-        // 인과 유지에 도움이 되도록 “~로 인해”가 없으면 완곡하게 보강(강제 수정 X)
-        const hasCausal = /로\s*인해|때문에/.test(body);
-        if (!hasCausal) refinedBody = `${body} (해당 현상으로 인해 점검이 진행될 수 있습니다.)`;
-      }
-
-      const t = `${tonePrefix(tone, type)}${title || "(제목을 입력해주세요)"}`.trim();
-      const parts = [];
-
-      if (compact) {
-        // compact: 2~4줄
-        parts.push(t);
-        parts.push(refinedBody || "(본문을 입력해주세요)");
-        if (cta && link) parts.push(`${cta} · ${link}`);
-        else if (cta) parts.push(cta);
-        else if (link) parts.push(link);
-        if (includePayload && payloadText) parts.push(`payload: ${payloadText}`);
-        return parts.join("\n");
-      }
-
-      // expanded
-      parts.push(`제목: ${t}`);
-      parts.push(`본문: ${refinedBody || "(본문을 입력해주세요)"}`);
-      if (cta) parts.push(`CTA: ${cta}`);
-      if (link) parts.push(`링크: ${link}`);
-      if (includePayload && payloadText) parts.push(`payload:\n${payloadText}`);
-      return parts.join("\n");
-    }
-
-    // =========================
-    // Wire up
-    // =========================
-    function genIssueAndRender() {
-      const text = buildIssueNotice();
-      setOut($("issueOut"), $("issueLen"), text);
-      return text;
-    }
-
-    function genPushAndRender() {
-      const text = buildPush();
-      setOut($("pushOut"), $("pushLen"), text);
-      return text;
-    }
-
-    $("btnIssueGen").addEventListener("click", genIssueAndRender);
-    $("btnPushGen").addEventListener("click", genPushAndRender);
-
-    $("btnIssueCopy").addEventListener("click", async () => {
-      const text = $("issueOut").textContent || genIssueAndRender();
-      await copyToClipboard(text);
+  function renderTabs(langs){
+    tabH.innerHTML="";
+    langs.forEach((l,i)=>{
+      const b=document.createElement("button");
+      b.className="tab-btn"+(i===0?" active":"");
+      b.innerText=l;
+      b.onclick=()=>{
+        document.querySelectorAll(".tab-btn").forEach(t=>t.classList.remove("active"));
+        b.classList.add("active");
+        updateDisplay(l);
+      };
+      tabH.appendChild(b);
     });
-    $("btnPushCopy").addEventListener("click", async () => {
-      const text = $("pushOut").textContent || genPushAndRender();
-      await copyToClipboard(text);
-    });
+    resArea.style.display="block";
+    updateDisplay(langs[0]);
+  }
 
-    $("btnIssueReset").addEventListener("click", () => {
-      ["issueTitle","issueWhen","issueScope","issueSymptom","issueApology","issueAction","issueExtra","issuePayload"].forEach(id => $(id).value = "");
-      $("issueIncludeMeta").checked = true;
-      $("issueIncludePayload").checked = false;
-      $("issueType").value = "incident";
-      setOut($("issueOut"), $("issueLen"), "");
-      toast("Issue 입력값을 초기화했어요.");
-    });
+  function updateDisplay(lang){
+    tabB.innerText = savedResults?.[lang]?.notice || "";
+  }
 
-    $("btnPushReset").addEventListener("click", () => {
-      ["pushTitle","pushBody","pushCta","pushDeepLink","pushPayload"].forEach(id => $(id).value = "");
-      $("pushIncludePayload").checked = false;
-      $("pushCompact").checked = true;
-      $("pushType").value = "notice";
-      $("pushTone").value = "neutral";
-      setOut($("pushOut"), $("pushLen"), "");
-      toast("PUSH 입력값을 초기화했어요.");
-    });
+  function copyAll(){
+    navigator.clipboard.writeText(tabB.innerText);
+    alert("복사되었습니다.");
+  }
 
-    // live preview (optional but helpful) – keep light
-    const issueInputs = ["issueTitle","issueType","issueWhen","issueScope","issueSymptom","issueApology","issueAction","issueExtra","issuePayload","issueIncludeMeta","issueIncludePayload"];
-    issueInputs.forEach(id => $(id).addEventListener("input", () => { if ($("issueOut").textContent) genIssueAndRender(); }));
-    issueInputs.forEach(id => $(id).addEventListener("change", () => { if ($("issueOut").textContent) genIssueAndRender(); }));
+  (function init(){
+    toggleSections();
+    syncMaintSubtitle();
+    refreshPills();
 
-    const pushInputs = ["pushType","pushTone","pushTitle","pushBody","pushCta","pushDeepLink","pushPayload","pushIncludePayload","pushCompact"];
-    pushInputs.forEach(id => $(id).addEventListener("input", () => { if ($("pushOut").textContent) genPushAndRender(); }));
-    pushInputs.forEach(id => $(id).addEventListener("change", () => { if ($("pushOut").textContent) genPushAndRender(); }));
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const rounded = Math.round(minutes / 5) * 5;
+    now.setMinutes(rounded); now.setSeconds(0); now.setMilliseconds(0);
 
-    // initial sample (empty outputs)
-    setOut($("issueOut"), $("issueLen"), "");
-    setOut($("pushOut"), $("pushLen"), "");
-  </script>
+    const yyyy = now.getFullYear();
+    const mm = pad2(now.getMonth()+1);
+    const dd = pad2(now.getDate());
+    const hh = pad2(now.getHours());
+    const mi = pad2(now.getMinutes());
+    const cur = `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+
+    issueDt.value = cur;
+    doneDt.value = cur;
+
+    const end = new Date(now.getTime() + 2*60*60*1000);
+    const em = pad2(end.getMonth()+1), ed = pad2(end.getDate()), eh = pad2(end.getHours()), eMi = pad2(end.getMinutes());
+    maintStart.value = cur;
+    maintEnd.value = `${end.getFullYear()}-${em}-${ed}T${eh}:${eMi}`;
+  })();
+
+  function toggleSections(){
+    const typeEl = document.getElementById("noticeType");
+    const type = typeEl ? typeEl.value : "issue";
+
+    const maint = document.getElementById("maintSection");
+    const issue = document.getElementById("issueSection");
+    const done  = document.getElementById("doneSection");
+
+    if(maint) maint.classList.toggle("hidden", type !== "maint");
+    if(issue) issue.classList.toggle("hidden", type !== "issue");
+    if(done)  done.classList.toggle("hidden", type !== "done");
+
+    const pill = document.getElementById("pillTemplate");
+    if(pill && typeEl){
+      pill.textContent = "템플릿: " + typeEl.options[typeEl.selectedIndex].text;
+    }
+  }
+
+  function initUI(){
+    try{
+      const typeEl = document.getElementById("noticeType");
+      if(typeEl){
+        typeEl.addEventListener("change", () => {
+          toggleSections();
+          if(typeof refreshPills === 'function') refreshPills();
+        });
+      }
+    }catch(e){}
+    try{ toggleSections(); }catch(e){}
+  }
+
+  document.addEventListener("DOMContentLoaded", initUI);
+</script>
 </body>
 </html>
-<div style="margin-top:6px; opacity:.7">BUILD: 2026-01-14 v9</div>
