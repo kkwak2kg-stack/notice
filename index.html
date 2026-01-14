@@ -8,7 +8,7 @@
     return langs.length ? langs : ["KO"];
   }
 
-  // ✅ 캐시/SW 꼬임 방지 (한 번 실행되면 자동 정리)
+  // ✅ 캐시/SW 꼬임 방지: 남아있으면 해제
   (async () => {
     try {
       if ('serviceWorker' in navigator) {
@@ -66,7 +66,8 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Professional Notice Master v40.5 (UI 유지 + [object Object] 제거 + 번역 실패 방어)</title>
+  <title>Professional Notice Master v40.6 (Groq-only 번역 + 키 sanitize)</title>
+
   <style>
     body { background-color:#0f172a; color:#f8fafc; font-family:'Pretendard',system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif; display:flex; justify-content:center; padding:20px; }
     .container { width:100%; max-width:980px; background:#1e293b; padding:40px; border-radius:24px; box-shadow:0 20px 50px rgba(0,0,0,.6); border:1px solid #334155; }
@@ -93,6 +94,7 @@
     .pill.ok { color:#9be7b1; border-color:rgba(155,231,177,.35); }
     .pill.info { color:#a5b4fc; border-color:rgba(165,180,252,.35); }
     .pill.warn { color:#ffd38a; border-color:rgba(255,211,138,.35); }
+    .pill.bad { color:#fb7185; border-color:rgba(251,113,133,.35); }
 
     .make-btn { width:100%; padding:20px; background:linear-gradient(135deg,#22d3ee,#0ea5e9); color:#0f172a; border:none; font-weight:900; border-radius:14px; cursor:pointer; font-size:18px; margin-top:10px; }
     .make-btn:active { transform:translateY(1px); }
@@ -114,17 +116,19 @@
     code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
   </style>
 </head>
+
 <body>
 <div class="container">
-  <h1>🎮 Professional Notice Master v40.5</h1>
+  <h1>🎮 Professional Notice Master v40.6</h1>
   <div class="sub">
     예전 UI 유지 + <b>[object Object]</b> 완전 제거 + <b>Issue 구조(현상→사과→조치→추가 안내)</b> 고정<br/>
-    다국어(EN/JA) 생성 시 번역 API 실패해도 <b>KO는 항상 생성</b>되도록 방어합니다.
+    다국어(EN/JA)는 <b>Groq API로만 번역</b>합니다. (워커 호출 X → CORS 오류 제거)
   </div>
 
   <div class="warnbox">
-    <b>번역 실패(Failed to fetch) 대응</b>: 워커 번역(Cloudflare) 실패 시 Groq API 키가 있으면 Groq로 fallback,
-    둘 다 불가하면 KO만 출력하고 경고를 표시합니다.
+    <b>필수</b>: 다국어 번역은 Groq 키가 있어야 합니다.<br/>
+    콘솔에서 1회 실행: <code>localStorage.setItem("GROQ_API_KEY","gsk_...")</code><br/>
+    ※ 키는 공백/줄바꿈/한글이 섞이면 실패할 수 있어 자동으로 정리(sanitize)합니다.
   </div>
 
   <div class="row" style="margin-top:18px;">
@@ -316,11 +320,17 @@
   // CONFIG
   // =========================
   const LS_KEY_NAME = "GROQ_API_KEY";
-  const TRANSLATE_WORKER_URL = "https://notice-translate.kkwak2kg.workers.dev";
-  // Groq 모델은 계정/시점에 따라 다를 수 있어 실패하면 사용자에게 경고하고 KO만 유지합니다.
   const GROQ_MODEL_CANDIDATES = ["llama3-70b-8192", "llama-3.1-70b-versatile", "llama3-8b-8192"];
 
-  function getApiKey(){ return (localStorage.getItem(LS_KEY_NAME) || "").trim(); }
+  function getApiKey(){
+    const raw = (localStorage.getItem(LS_KEY_NAME) || "");
+    // ✅ 헤더 에러 방지: 공백/개행 제거 + 따옴표 제거 + 비ASCII 제거
+    return raw
+      .trim()
+      .replace(/^["']|["']$/g, "")
+      .replace(/\s+/g, "")
+      .replace(/[^\x20-\x7E]/g, "");
+  }
 
   // ✅ 안전 문자열화: [object Object] 완전 제거
   function safeToText(value){
@@ -400,6 +410,14 @@
     pillTemplate.textContent = "템플릿: " + noticeType.options[noticeType.selectedIndex].text;
   }
 
+  function setTranslatePill(text, mode){
+    const el = $("pillTranslate");
+    if(!el) return;
+    el.textContent = text;
+    el.classList.remove("ok","info","warn","bad");
+    el.classList.add(mode || "warn");
+  }
+
   function cleanBracketTitle(s){
     if(!s) return "";
     let t = String(s).trim();
@@ -452,7 +470,6 @@
     const timeStr = formatDT(whenRaw, dtFmt);
     const timeStrSafe = safeToText(timeStr || String(whenRaw || "").trim()).trim();
 
-    // ✅ 현상은 무조건 issue.text 우선
     const phenomenonRaw = issueObj.text || payload.issueText || payload.issueDesc || "";
     const phenomenon = safeToText(phenomenonRaw).trim();
 
@@ -570,50 +587,21 @@
   }
 
   // =========================
-  // Translation
+  // Groq translation (ONLY)
   // =========================
-  function setTranslatePill(text, mode){
-    const el = $("pillTranslate");
-    if(!el) return;
-    el.textContent = text;
-    el.classList.remove("ok","info","warn");
-    el.classList.add(mode || "warn");
-  }
-
-  async function translateFromWorker(koreanNotice, langs){
-    const targets = (langs || []).filter(l => l !== "KO");
-    if(!targets.length) return {};
-
-    const res = await fetch(TRANSLATE_WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: String(koreanNotice || ""),
-        targetLangs: targets.map(t => String(t).toLowerCase())
-      }),
-    });
-
-    if(!res.ok){
-      const errText = await res.text().catch(() => "");
-      throw new Error("translate worker failed: " + res.status + " " + errText);
-    }
-
-    const data = await res.json();
-    const out = {};
-    for(const t of targets){
-      const lk  = String(t).toLowerCase();
-      out[t] = (data && typeof data[lk] === "string") ? data[lk] : "";
-    }
-    return out;
-  }
-
-  async function translateFromGroqOne(koreanNotice, target){
+  async function groqTranslateOne(koreanNotice, target){
     const apiKey = getApiKey();
     if(!apiKey) throw new Error("NO_GROQ_KEY");
 
     const targetName = target === "EN" ? "English" : target === "JA" ? "Japanese" : target;
-    const sys = `You are a professional game live-ops localization specialist. Translate Korean service notices into ${targetName}. Keep a polite, clear tone. Preserve line breaks and structure. Do NOT add extra info.`;
-    const user = koreanNotice;
+    const sys =
+`You are a professional game live-ops localization specialist.
+Translate Korean service notices into ${targetName}.
+Keep a polite, clear tone.
+Preserve line breaks and structure.
+Do NOT add extra information.
+Do NOT add greetings that are not in the original.
+Return only the translated text.`;
 
     let lastErr = null;
 
@@ -630,7 +618,7 @@
             temperature: 0.2,
             messages: [
               { role: "system", content: sys },
-              { role: "user", content: user }
+              { role: "user", content: String(koreanNotice || "") }
             ]
           })
         });
@@ -653,36 +641,17 @@
     throw lastErr || new Error("GROQ_FAILED");
   }
 
-  async function translateWithFallback(koreanNotice, langs){
+  async function groqTranslateMany(koreanNotice, langs){
     const targets = (langs || []).filter(l => l !== "KO");
     const out = {};
-
     if(!targets.length) return out;
 
-    // 1) Worker
-    try{
-      setTranslatePill("번역: 워커", "info");
-      const workerOut = await translateFromWorker(koreanNotice, langs);
-      for(const t of targets) out[t] = workerOut[t] || "";
-      setTranslatePill("번역: 완료", "ok");
-      return out;
-    }catch(e){
-      console.warn("Worker translate failed:", e);
+    setTranslatePill("번역: Groq", "info");
+    for(const t of targets){
+      out[t] = await groqTranslateOne(koreanNotice, t);
     }
-
-    // 2) Groq fallback
-    try{
-      setTranslatePill("번역: Groq", "info");
-      for(const t of targets){
-        out[t] = await translateFromGroqOne(koreanNotice, t);
-      }
-      setTranslatePill("번역: 완료", "ok");
-      return out;
-    }catch(e){
-      console.warn("Groq translate failed:", e);
-      setTranslatePill("번역: 실패( KO만 출력 )", "warn");
-      return out; // empty → KO만
-    }
+    setTranslatePill("번역: 완료", "ok");
+    return out;
   }
 
   // =========================
@@ -824,24 +793,38 @@
 
       // ✅ KO는 무조건 생성
       const koText = buildKOText(payload);
+
       savedResults = {};
       if(langs.includes("KO")) savedResults.KO = { notice: koText };
 
-      // ✅ 다국어는 실패해도 KO는 유지
-      const tr = await translateWithFallback(koText, langs);
-      for(const l of langs){
-        if(l === "KO") continue;
-        const t = tr[l];
-        if(typeof t === "string" && t.trim()){
-          savedResults[l] = { notice: t.trim() };
+      // ✅ EN/JA 선택 시: Groq 키 없으면 KO만 + 경고
+      const needTr = langs.filter(l => l !== "KO");
+      if(needTr.length){
+        const k = getApiKey();
+        if(!k){
+          setTranslatePill("번역: Groq 키 필요", "bad");
+          for(const l of needTr){
+            savedResults[l] = { notice: "번역 생성에 실패했습니다. (Groq API Key를 설정해 주세요)\n\n" + koText };
+          }
         }else{
-          // 번역 실패 시 빈 탭 대신 "번역 실패 안내" 텍스트를 넣어도 되고, 탭을 아예 빼도 되는데
-          // 사용성상 탭은 유지하고 메시지를 넣습니다.
-          savedResults[l] = { notice: "번역 생성에 실패했습니다. (네트워크/번역 API 상태를 확인해 주세요)\n\n" + koText };
+          try{
+            const tr = await groqTranslateMany(koText, langs);
+            for(const l of needTr){
+              const t = tr[l];
+              savedResults[l] = { notice: (typeof t === "string" && t.trim()) ? t.trim() : ("번역 생성에 실패했습니다.\n\n"+koText) };
+            }
+          }catch(e){
+            console.error(e);
+            setTranslatePill("번역: 실패( KO만 )", "bad");
+            for(const l of needTr){
+              savedResults[l] = { notice: "번역 생성에 실패했습니다. (Groq API 응답/키를 확인해 주세요)\n\n" + koText };
+            }
+          }
         }
+      }else{
+        setTranslatePill("번역: 미사용", "warn");
       }
 
-      // 렌더
       renderTabs(langs);
     }catch(e){
       console.error(e);
@@ -857,6 +840,7 @@
     toggleSections();
     syncMaintSubtitle();
     refreshPills();
+    setTranslatePill("번역: 준비", "warn");
 
     const now = new Date();
     const minutes = now.getMinutes();
