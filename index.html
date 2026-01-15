@@ -1,518 +1,560 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Professional Notice Master (Safe Token Input)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Professional Notice Master (vSafe)</title>
   <style>
     :root{
-      --bg:#0b1220; --panel:#0f1a30; --panel2:#0c162b;
-      --text:#e6eefc; --muted:#9db1d6; --line:#1f3158;
-      --accent:#3dd6ff; --ok:#32d583; --warn:#fdb022; --bad:#f97066;
-      --chip:#0a1733;
-      --input:#0b1730;
+      --bg:#0b1220; --panel:#0f1b33; --panel2:#0c1730;
+      --text:#e9f0ff; --muted:#a9b6d3; --line:#1b2b55;
+      --good:#2ee59d; --bad:#ff5b6e; --warn:#ffc857; --blue:#4cc9ff;
+      --btn1:#19c7ff; --btn2:#39e7a8;
+      --shadow: 0 18px 60px rgba(0,0,0,.35);
+      --r:16px;
+      font-synthesis-weight:none;
     }
     *{box-sizing:border-box}
     body{
-      margin:0; padding:24px; background:linear-gradient(180deg,#050912 0%,#0b1220 60%);
-      color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial;
-      display:flex; justify-content:center;
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(76,201,255,.18), transparent 55%),
+                  radial-gradient(1200px 800px at 80% 20%, rgba(46,229,157,.15), transparent 55%),
+                  linear-gradient(180deg, #070b15, #0b1220);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, sans-serif;
+      padding:24px;
     }
-    .wrap{width:min(1100px, 100%);}
-    .card{
-      background:rgba(15,26,48,.9);
-      border:1px solid rgba(31,49,88,.7);
-      border-radius:18px;
-      box-shadow:0 10px 30px rgba(0,0,0,.35);
-      overflow:hidden;
+    .app{
+      width:min(1220px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:24px;
+      padding:22px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
     }
     .header{
-      padding:22px 22px 16px;
-      background:linear-gradient(180deg, rgba(61,214,255,.12), rgba(61,214,255,0));
-      border-bottom:1px solid rgba(31,49,88,.6);
+      display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:14px;
     }
-    h1{margin:0 0 6px; font-size:22px; letter-spacing:.2px}
-    .sub{color:var(--muted); font-size:13px; line-height:1.4}
-    .note{
-      margin-top:12px;
-      padding:12px 14px;
-      background:rgba(12,22,43,.9);
-      border:1px solid rgba(31,49,88,.7);
-      border-radius:14px;
-      color:var(--muted);
-      font-size:12.5px;
-      line-height:1.5;
+    h1{margin:0; font-size:26px; letter-spacing:.2px}
+    .sub{margin-top:6px; color:var(--muted); font-size:13px; line-height:1.45}
+    .pillrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .pill{
+      font-size:12px; color:var(--muted);
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      padding:6px 10px; border-radius:999px;
     }
+    .pill.good{color:#b7ffe6; border-color:rgba(46,229,157,.35); background:rgba(46,229,157,.08)}
+    .pill.warn{color:#ffe8b0; border-color:rgba(255,200,87,.35); background:rgba(255,200,87,.08)}
     .grid{
       display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:14px;
-      padding:18px 22px 22px;
+      grid-template-columns: 1.15fr 1fr;
+      gap:16px;
+      margin-top:14px;
     }
-    @media (max-width: 900px){
-      .grid{grid-template-columns:1fr;}
+    @media (max-width: 980px){
+      .grid{grid-template-columns: 1fr}
     }
-    .panel{
-      background:rgba(12,22,43,.9);
-      border:1px solid rgba(31,49,88,.7);
-      border-radius:16px;
-      padding:14px;
+    .card{
+      border:1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(15,27,51,.78), rgba(12,23,48,.62));
+      border-radius: var(--r);
+      padding:16px;
     }
-    .panel h2{
-      margin:0 0 10px;
-      font-size:14px;
-      color:#d7e6ff;
-      letter-spacing:.2px;
+    .card h2{
+      margin:0 0 10px 0;
+      font-size:14px; color:#d7e4ff; letter-spacing:.2px;
+      display:flex; align-items:center; gap:8px;
     }
-    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px;}
-    input, select, textarea{
+    .card h2 .n{
+      width:22px; height:22px; border-radius:8px;
+      display:inline-flex; align-items:center; justify-content:center;
+      background: rgba(76,201,255,.12);
+      border:1px solid rgba(76,201,255,.18);
+      color:#dff6ff; font-weight:700; font-size:12px;
+    }
+    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px}
+    input[type="text"], input[type="password"], textarea, select{
       width:100%;
-      background:rgba(11,23,48,.95);
-      border:1px solid rgba(31,49,88,.8);
-      color:var(--text);
+      padding:11px 12px;
       border-radius:12px;
-      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(5,10,22,.35);
+      color:var(--text);
       outline:none;
-      font-size:14px;
     }
-    textarea{min-height:90px; resize:vertical;}
-    input:focus, select:focus, textarea:focus{border-color:rgba(61,214,255,.9); box-shadow:0 0 0 3px rgba(61,214,255,.12);}
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-    .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
-    @media (max-width: 560px){ .row, .row3{grid-template-columns:1fr;} }
-    .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
-    .chip{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:7px 10px;
-      border-radius:999px;
-      background:rgba(10,23,51,.9);
-      border:1px solid rgba(31,49,88,.8);
-      font-size:12px;
-      color:var(--muted);
-      user-select:none;
+    textarea{min-height:120px; resize:vertical; line-height:1.5}
+    input:focus, textarea:focus, select:focus{
+      border-color: rgba(76,201,255,.45);
+      box-shadow: 0 0 0 3px rgba(76,201,255,.12);
     }
-    .chip input{width:auto; margin:0;}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    @media (max-width: 520px){ .row{grid-template-columns:1fr} }
+    .opts{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px}
+    .check{
+      display:flex; align-items:center; gap:8px;
+      font-size:12px; color:var(--muted);
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      padding:8px 10px; border-radius:12px;
+    }
+    .check input{accent-color: var(--blue)}
     .btn{
       width:100%;
-      margin-top:12px;
-      padding:14px 14px;
-      border:0;
-      border-radius:14px;
-      color:#031018;
-      font-weight:800;
-      font-size:15px;
+      margin-top:14px;
+      border:none;
       cursor:pointer;
-      background:linear-gradient(135deg, rgba(61,214,255,1), rgba(50,213,131,1));
-      box-shadow:0 10px 20px rgba(0,0,0,.25);
+      padding:14px 14px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--btn1), var(--btn2));
+      color:#021018;
+      font-weight:900;
+      font-size:15px;
+      letter-spacing:.2px;
     }
-    .btn:active{transform:translateY(1px);}
-    .statusbar{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
-    .pill{
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .statusRow{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px
+    }
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
       font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(31,49,88,.8);
-      background:rgba(10,23,51,.9);
-      color:var(--muted);
+      padding:8px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
     }
-    .pill.ok{border-color:rgba(50,213,131,.6); color:#b8f5d6;}
-    .pill.bad{border-color:rgba(249,112,102,.6); color:#ffd1cd;}
-    .pill.warn{border-color:rgba(253,176,34,.6); color:#ffe6b0;}
+    .dot{width:8px;height:8px;border-radius:999px;background:#8aa3d6}
+    .dot.good{background:var(--good)}
+    .dot.bad{background:var(--bad)}
+    .dot.warn{background:var(--warn)}
     .outGrid{
-      display:grid;
-      grid-template-columns:1fr 1fr 1fr;
-      gap:12px;
-      margin-top:12px;
+      display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;
     }
-    @media (max-width: 900px){ .outGrid{grid-template-columns:1fr;} }
-    .outBox{
-      background:rgba(11,18,32,.7);
-      border:1px solid rgba(31,49,88,.7);
-      border-radius:14px;
+    @media (max-width: 980px){ .outGrid{grid-template-columns: 1fr} }
+    .out{
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(5,10,22,.25);
+      border-radius: 14px;
       padding:12px;
       min-height:140px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+      display:flex; flex-direction:column; gap:8px;
     }
-    .outTitle{display:flex; justify-content:space-between; align-items:center;}
-    .outTitle strong{font-size:13px;}
-    .small{font-size:12px; color:var(--muted);}
-    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .outHead{
+      display:flex; align-items:center; justify-content:space-between;
+      font-weight:900; font-size:12px; letter-spacing:.2px;
+      color:#d7e4ff;
+    }
+    .mini{
+      font-size:11px; color:var(--muted);
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      padding:4px 8px; border-radius:999px;
+    }
     pre{
-      white-space:pre-wrap;
-      word-break:break-word;
-      margin:0;
-      color:#dbe9ff;
-      font-size:13px;
+      margin:0; white-space:pre-wrap; word-break:break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size:12px; color:#cfe0ff;
       line-height:1.45;
     }
-    .err{
-      border-color:rgba(249,112,102,.65) !important;
-      background:rgba(249,112,102,.08) !important;
-    }
+    .hint{color:var(--muted); font-size:12px; margin-top:10px; line-height:1.5}
+    .danger{color:#ffd0d6}
+    .link{color:#bfeaff; text-decoration:none}
+    .link:hover{text-decoration:underline}
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div class="header">
+  <div class="app">
+    <div class="header">
+      <div>
         <h1>Professional Notice Master (vSafe)</h1>
         <div class="sub">
-          브라우저에 <b>Groq API Key를 저장하지 않는</b> 방식입니다.<br/>
-          번역은 Cloudflare Worker의 <code>/translate</code> 엔드포인트로 요청되며, 필요 시 <code>X-Translate-Token</code>을 <b>직접 입력</b>해 사용합니다.
+          브라우저에 Groq API Key를 저장하지 않는 방식입니다. <br/>
+          번역 요청은 <b>Cloudflare Worker의 /translate</b> 엔드포인트로 보내고, Worker가 내부에서 Vercel(Groq 프록시)로 전달합니다.
         </div>
-        <div class="note">
-          ✅ 안전 포인트: GitHub Pages 코드에 토큰을 하드코딩하지 않음(공개 저장소에 올려도 유출 위험 감소).<br/>
-          ⚠️ Worker에서 <code>TRANSLATE_TOKEN</code>을 켜 두었다면, 아래 “Translate Token”을 입력해야 401이 사라집니다.
+        <div class="pillrow">
+          <div class="pill good">✅ 안전 포인트: GitHub Pages 코드에 API 키/시크릿 하드코딩 없음</div>
+          <div class="pill warn">⚠️ 주의: 헤더 값에 한글/이모지 넣으면 브라우저가 차단합니다</div>
+          <div class="pill">Origin: https://kkwak2kg-stack.github.io</div>
+        </div>
+      </div>
+      <div style="text-align:right;color:var(--muted);font-size:12px;line-height:1.5">
+        <div>디버그: 아래 네트워크 로그에</div>
+        <div>요청/응답이 표시됩니다</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="card">
+        <h2><span class="n">1</span> 연결 설정</h2>
+
+        <label>Worker Translate Endpoint (예: https://xxxx.workers.dev/translate)</label>
+        <input id="endpoint" type="text" placeholder="https://YOUR-WORKER.workers.dev/translate" />
+
+        <label>Translate Token (Worker의 TRANSLATE_TOKEN과 동일 / 없으면 비워도 됨)</label>
+        <input id="translateToken" type="text" placeholder="예: NOTICE_INTERNAL_V1 (영문/숫자/_/- 만 권장)" />
+
+        <label>Worker Shared Token (Worker가 Authorization을 요구할 때만 필요)</label>
+        <input id="workerSharedToken" type="password" placeholder="예: test-token-1234 (영문/숫자/_/- 만 권장)" />
+
+        <div class="opts">
+          <label class="check" style="margin:0">
+            <input id="saveSession" type="checkbox" />
+            토큰/엔드포인트 세션 저장
+          </label>
+          <div class="badge" id="statusBadge"><span class="dot warn"></span><span id="statusText">대기중</span></div>
+          <div class="badge" title="401이면 토큰/값 불일치일 가능성이 큽니다."><span class="dot warn"></span>401이면 토큰값 불일치</div>
+        </div>
+
+        <div class="hint">
+          팁: 토큰 값은 <b>반드시 ASCII(영문/숫자/기호)</b>로만 입력하세요. <span class="danger">한글이 들어가면 브라우저가 요청 자체를 막습니다.</span>
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,.08); margin:16px 0;" />
+
+        <h2><span class="n">2</span> 공지 입력</h2>
+
+        <div class="row">
+          <div>
+            <label>유저 호칭</label>
+            <input id="userTitle" type="text" value="모험가 여러분" />
+          </div>
+          <div>
+            <label>화자명</label>
+            <input id="speaker" type="text" value="바바" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>공지 유형</label>
+            <select id="noticeType">
+              <option value="이슈 현상 안내" selected>이슈 현상 안내</option>
+              <option value="점검 안내">점검 안내</option>
+              <option value="이벤트 안내">이벤트 안내</option>
+              <option value="공지">공지</option>
+            </select>
+          </div>
+          <div>
+            <label>발생/확인 일시</label>
+            <input id="datetime" type="text" placeholder="YYYY-MM-DD HH:mm" value="2026-01-15 18:47" />
+          </div>
+        </div>
+
+        <label>현상 입력(한국어 원문)</label>
+        <textarea id="koText" placeholder="예) 접속 불가 현상">접속 불가 현상</textarea>
+
+        <label>언어 선택</label>
+        <div class="opts">
+          <label class="check" style="margin:0"><input id="langKO" type="checkbox" checked /> KO</label>
+          <label class="check" style="margin:0"><input id="langEN" type="checkbox" checked /> EN</label>
+          <label class="check" style="margin:0"><input id="langJA" type="checkbox" /> JA</label>
+        </div>
+
+        <button id="runBtn" class="btn">번역/생성</button>
+        <div class="hint">
+          요청 바디는 Worker가 이해하는 최소 포맷으로 보냅니다: <code style="color:#bfeaff">{ text, targetLang }</code><br/>
+          (그래서 <b>HTTP_400: text is required</b> 문제가 재발하지 않습니다.)
         </div>
       </div>
 
-      <div class="grid">
-        <!-- LEFT: Settings + Form -->
-        <div class="panel">
-          <h2>1) 연결 설정</h2>
-
-          <label>Worker Translate Endpoint (예: https://xxxx.workers.dev/translate)</label>
-          <input id="endpoint" placeholder="https://YOUR-WORKER.workers.dev/translate" />
-
-          <label>Translate Token (Worker의 TRANSLATE_TOKEN과 동일 / 없으면 비워도 됨)</label>
-          <input id="token" type="password" placeholder="(선택) X-Translate-Token 값" />
-
-          <div class="chips">
-            <label class="chip" title="이 PC 브라우저에만 저장됩니다(세션 저장).">
-              <input id="remember" type="checkbox" />
-              토큰/엔드포인트 세션 저장
-            </label>
-            <span class="chip mono" id="originChip"></span>
+      <!-- RIGHT -->
+      <div class="card">
+        <h2><span class="n">3</span> 결과</h2>
+        <div class="outGrid">
+          <div class="out">
+            <div class="outHead">KO <span class="mini" id="koTag">LOCAL</span></div>
+            <pre id="outKO">-</pre>
           </div>
-
-          <div class="statusbar">
-            <span class="pill" id="pillReady">대기중</span>
-            <span class="pill warn" id="pillHint">401이면 토큰/값 불일치</span>
+          <div class="out">
+            <div class="outHead">EN <span class="mini" id="enTag">-</span></div>
+            <pre id="outEN">-</pre>
           </div>
-
-          <hr style="border:0;border-top:1px solid rgba(31,49,88,.6); margin:14px 0;"/>
-
-          <h2>2) 공지 입력</h2>
-
-          <div class="row">
-            <div>
-              <label>유저 호칭</label>
-              <input id="salute" value="모험가 여러분" />
-            </div>
-            <div>
-              <label>화자명</label>
-              <input id="speaker" value="바바" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label>공지 유형</label>
-              <select id="category">
-                <option>이슈 현상 안내</option>
-                <option>점검 안내</option>
-                <option>이벤트 안내</option>
-                <option>공지</option>
-              </select>
-            </div>
-            <div>
-              <label>발생/확인 일시</label>
-              <input id="when" type="datetime-local" />
-            </div>
-          </div>
-
-          <label>현상 입력(한국어 원문)</label>
-          <textarea id="bodyKo">접속 불가 현상</textarea>
-
-          <label>언어 선택</label>
-          <div class="chips">
-            <label class="chip"><input type="checkbox" id="langKO" checked /> KO</label>
-            <label class="chip"><input type="checkbox" id="langEN" checked /> EN</label>
-            <label class="chip"><input type="checkbox" id="langJA" /> JA</label>
-          </div>
-
-          <button class="btn" id="btnRun">번역/생성</button>
-          <div class="small" style="margin-top:10px;">
-            디버그: 아래 결과 박스에 <span class="mono">HTTP status</span>와 에러 원문이 표시됩니다.
+          <div class="out">
+            <div class="outHead">JA <span class="mini" id="jaTag">-</span></div>
+            <pre id="outJA">-</pre>
           </div>
         </div>
 
-        <!-- RIGHT: Output -->
-        <div class="panel">
-          <h2>3) 결과</h2>
-          <div class="outGrid">
-            <div class="outBox" id="boxKO">
-              <div class="outTitle">
-                <strong>KO</strong>
-                <span class="small mono" id="stKO">-</span>
-              </div>
-              <pre id="outKO"></pre>
-            </div>
-            <div class="outBox" id="boxEN">
-              <div class="outTitle">
-                <strong>EN</strong>
-                <span class="small mono" id="stEN">-</span>
-              </div>
-              <pre id="outEN"></pre>
-            </div>
-            <div class="outBox" id="boxJA">
-              <div class="outTitle">
-                <strong>JA</strong>
-                <span class="small mono" id="stJA">-</span>
-              </div>
-              <pre id="outJA"></pre>
-            </div>
-          </div>
+        <h2 style="margin-top:14px"><span class="n">4</span> 네트워크 로그</h2>
+        <div class="out" style="min-height:300px">
+          <div class="outHead">Last Request / Response <span class="mini" id="timeTag">-</span></div>
+          <pre id="netlog">{}</pre>
+        </div>
 
-          <hr style="border:0;border-top:1px solid rgba(31,49,88,.6); margin:14px 0;"/>
-
-          <h2>4) 네트워크 로그</h2>
-          <div class="outBox" style="min-height:180px;">
-            <div class="outTitle">
-              <strong>Last Request / Response</strong>
-              <span class="small mono" id="stNET">-</span>
-            </div>
-            <pre class="mono" id="netlog"></pre>
-          </div>
-
-          <div class="small" style="margin-top:10px;">
-            팁: 401이면 대개 <b>X-Translate-Token 누락/불일치</b>입니다. 403이면 Worker 내부에서 upstream(Groq/Vercel) 거부일 수 있어요.
-          </div>
+        <div class="hint">
+          상태 코드 해석:
+          <ul style="margin:8px 0 0 18px; color:var(--muted); line-height:1.55">
+            <li><b>200</b>: 정상</li>
+            <li><b>400</b>: Worker 입력 포맷 문제(이 페이지는 방지됨) 또는 Worker 내부 검증 실패</li>
+            <li><b>401</b>: Authorization Bearer 토큰 불일치(Worker Shared Token 확인)</li>
+            <li><b>403</b>: Upstream(Groq/Vercel)에서 거부 또는 Worker에서 차단</li>
+          </ul>
         </div>
       </div>
     </div>
   </div>
 
 <script>
-  // ---------- Helpers ----------
-  const $ = (id) => document.getElementById(id);
-  const nowLocalISO = () => {
+(function(){
+  // ---- Helpers ----
+  const $ = (id)=>document.getElementById(id);
+  const nowKST = ()=>{
     const d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0,16);
+    return new Intl.DateTimeFormat('ko-KR', { dateStyle:'short', timeStyle:'medium' }).format(d);
   };
+  // 브라우저 fetch 헤더 값은 "ISO-8859-1" 범위(사실상 ASCII 권장) 밖이면 예외 발생.
+  const isHeaderSafe = (s)=>/^[\x20-\x7E]*$/.test(s); // printable ASCII
+  const softTrim = (s)=> (s ?? "").toString().trim();
 
-  function setPill(text, kind) {
-    const pill = $("pillReady");
-    pill.textContent = text;
-    pill.className = "pill" + (kind ? (" " + kind) : "");
+  function setStatus(kind, text){
+    const dot = $("#statusBadge").querySelector(".dot");
+    dot.classList.remove("good","bad","warn");
+    dot.classList.add(kind);
+    $("#statusText").textContent = text;
+  }
+  function setMini(tagId, text){
+    $(tagId).textContent = text;
   }
 
-  function setBoxStatus(lang, text, ok=true) {
-    const st = $("st" + lang);
-    st.textContent = text;
-    const box = $("box" + lang);
-    box.classList.toggle("err", !ok);
+  // ---- Session ----
+  function loadSession(){
+    try{
+      const saved = JSON.parse(sessionStorage.getItem("notice_vsafe")||"{}");
+      if(saved.endpoint) $("#endpoint").value = saved.endpoint;
+      if(saved.translateToken) $("#translateToken").value = saved.translateToken;
+      if(saved.workerSharedToken) $("#workerSharedToken").value = saved.workerSharedToken;
+      if(saved.saveSession) $("#saveSession").checked = true;
+    }catch(e){}
+  }
+  function saveSession(){
+    if(!$("#saveSession").checked) return;
+    const payload = {
+      saveSession: true,
+      endpoint: $("#endpoint").value,
+      translateToken: $("#translateToken").value,
+      workerSharedToken: $("#workerSharedToken").value
+    };
+    sessionStorage.setItem("notice_vsafe", JSON.stringify(payload));
+  }
+  function clearSession(){
+    sessionStorage.removeItem("notice_vsafe");
   }
 
-  function writeOut(lang, text) {
-    $("out" + lang).textContent = text || "";
-  }
+  // ---- Prompt Builder ----
+  function buildPrompt(){
+    const userTitle = softTrim($("#userTitle").value);
+    const speaker   = softTrim($("#speaker").value);
+    const noticeType= softTrim($("#noticeType").value);
+    const datetime  = softTrim($("#datetime").value);
+    const koText    = softTrim($("#koText").value);
 
-  function logNet(obj) {
-    $("netlog").textContent = JSON.stringify(obj, null, 2);
-    $("stNET").textContent = new Date().toLocaleString();
-  }
-
-  function buildPrompt({salute, speaker, category, when, bodyKo, target}) {
-    // 필요하면 여기 템플릿을 더 고급화해도 됨
-    const whenText = when ? when.replace("T", " ") : "";
     return [
-      `너는 게임 공지 번역가다.`,
-      `아래 한국어 공지를 ${target}로 자연스럽고 공손하게 번역하라.`,
-      `고유명사는 유지하고, 날짜/시간 포맷은 자연스럽게 유지하라.`,
-      ``,
-      `[공지정보]`,
-      `- 유저 호칭: ${salute}`,
-      `- 화자명: ${speaker}`,
-      `- 공지 유형: ${category}`,
-      `- 발생/확인 일시: ${whenText}`,
-      ``,
-      `[한국어 원문]`,
-      `${bodyKo}`.trim()
+      "너는 게임 공지 번역가다.",
+      "아래 한국어 공지를 대상 언어로 자연스럽고 공손하게 번역하라.",
+      "고유명사는 유지하고, 날짜/시간 포맷은 자연스럽게 유지하라.",
+      "",
+      "[공지정보]",
+      `- 유저 호칭: ${userTitle || "-"}`,
+      `- 화자명: ${speaker || "-"}`,
+      `- 공지 유형: ${noticeType || "-"}`,
+      `- 발생/확인 일시: ${datetime || "-"}`,
+      "",
+      "[한국어 원문]",
+      koText
     ].join("\n");
   }
 
-  async function callWorkerTranslate(endpoint, token, payload) {
-    const headers = { "Content-Type": "application/json" };
-    if (token && token.trim()) headers["X-Translate-Token"] = token.trim();
-
-    const reqInfo = { endpoint, headers, payload };
-    setPill("요청중...", "warn");
-
-    let res, text;
-    try {
-      res = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(payload) });
-      text = await res.text();
-    } catch (e) {
-      logNet({ request: reqInfo, networkError: String(e) });
-      throw new Error("NETWORK_ERROR: " + e.message);
+  // ---- Call Worker ----
+  async function callWorker(targetLang, promptText){
+    const endpoint = softTrim($("#endpoint").value);
+    if(!endpoint){
+      throw new Error("Worker endpoint가 비어있습니다.");
     }
 
-    // 기록
-    logNet({
+    const translateToken = softTrim($("#translateToken").value);
+    const workerSharedToken = softTrim($("#workerSharedToken").value);
+
+    // 헤더 안전성 검사(한글/이모지 방지)
+    if(translateToken && !isHeaderSafe(translateToken)){
+      throw new Error("Translate Token에 한글/이모지 등 비ASCII 문자가 포함되어 있습니다. (헤더로 전송 불가)");
+    }
+    if(workerSharedToken && !isHeaderSafe(workerSharedToken)){
+      throw new Error("Worker Shared Token에 비ASCII 문자가 포함되어 있습니다. (헤더로 전송 불가)");
+    }
+
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    if(translateToken){
+      // Worker에서 허용하는 헤더명: X-Translate-Token
+      headers["X-Translate-Token"] = translateToken;
+    }
+    // Worker가 Authorization을 검사하는 경우가 많아서(401 해결), 값이 있으면 항상 넣습니다.
+    if(workerSharedToken){
+      headers["Authorization"] = "Bearer " + workerSharedToken;
+    }
+
+    // ✅ Worker가 기대하는 최소 입력 포맷
+    const body = JSON.stringify({
+      text: promptText,
+      targetLang
+    });
+
+    const reqInfo = {
+      endpoint,
+      headers: Object.assign({}, headers, {
+        // 보안상 토큰을 로그에 그대로 남기고 싶지 않으면 아래 줄을 지우세요.
+        // (현재는 디버깅 편의를 위해 그대로 둡니다.)
+      }),
+      payload: { text: promptText, targetLang }
+    };
+
+    // 네트워크 로그(요청)
+    $("#netlog").textContent = JSON.stringify({ request: reqInfo }, null, 2);
+    $("#timeTag").textContent = nowKST();
+
+    const res = await fetch(endpoint, { method:"POST", headers, body });
+
+    const contentType = (res.headers.get("content-type")||"").toLowerCase();
+    let dataText = "";
+    let dataJson = null;
+
+    if(contentType.includes("application/json")){
+      dataJson = await res.json().catch(()=>null);
+      dataText = dataJson ? JSON.stringify(dataJson) : "";
+    }else{
+      dataText = await res.text().catch(()=> "");
+    }
+
+    // 네트워크 로그(응답)
+    const mergedLog = {
       request: reqInfo,
       response: {
         status: res.status,
-        statusText: res.statusText,
-        body: text
+        ok: res.ok,
+        contentType,
+        body: dataJson ?? dataText
       }
-    });
+    };
+    $("#netlog").textContent = JSON.stringify(mergedLog, null, 2);
 
-    // JSON 파싱 시도
-    let json = null;
-    try { json = JSON.parse(text); } catch (_) {}
-
-    if (!res.ok) {
-      const msg = (json && (json.error?.message || json.error || json.message)) ? (json.error?.message || json.error || json.message) : text;
-      const err = new Error(`HTTP_${res.status}: ${msg}`);
+    if(!res.ok){
+      // Worker가 {error:"..."} 형태로 주는 경우를 우선 표시
+      const msg =
+        (dataJson && (dataJson.error || dataJson.message)) ? (dataJson.error || dataJson.message)
+        : (typeof dataText === "string" && dataText) ? dataText
+        : `HTTP ${res.status}`;
+      const err = new Error(msg);
       err.status = res.status;
-      err.raw = text;
       throw err;
     }
 
-    // 성공 응답이 OpenAI/Groq 형태일 수도 있고, 단순 {text:""}일 수도 있음
-    return json || { raw: text };
+    // ✅ 성공 케이스: Worker가 어떤 형태로 주든 최대한 유연하게 처리
+    // 1) { translation: "..." }
+    // 2) { text: "..." }
+    // 3) { choices: [ { message: { content: "..." } } ] } (Groq 스타일)
+    // 4) 문자열
+    if(dataJson){
+      if(typeof dataJson.translation === "string") return dataJson.translation;
+      if(typeof dataJson.text === "string") return dataJson.text;
+      if(dataJson.choices && dataJson.choices[0]?.message?.content) return dataJson.choices[0].message.content;
+      return JSON.stringify(dataJson, null, 2);
+    }
+    return dataText;
   }
 
-  function extractTextFromResponse(json) {
-    // 1) OpenAI/Groq chat.completions 형태
-    const c = json?.choices?.[0]?.message?.content;
-    if (typeof c === "string" && c.trim()) return c.trim();
-    // 2) 커스텀 형태
-    if (typeof json?.text === "string" && json.text.trim()) return json.text.trim();
-    if (typeof json?.translation === "string" && json.translation.trim()) return json.translation.trim();
-    // 3) fallback
-    return JSON.stringify(json, null, 2);
-  }
+  // ---- Main ----
+  async function run(){
+    saveSession();
 
-  // ---------- Init ----------
-  $("when").value = nowLocalISO();
-  $("originChip").textContent = "Origin: " + location.origin;
+    const doKO = $("#langKO").checked;
+    const doEN = $("#langEN").checked;
+    const doJA = $("#langJA").checked;
 
-  // Restore session values (optional)
-  try {
-    const saved = sessionStorage.getItem("notice_safe_cfg");
-    if (saved) {
-      const cfg = JSON.parse(saved);
-      if (cfg.endpoint) $("endpoint").value = cfg.endpoint;
-      if (cfg.token) $("token").value = cfg.token;
-      $("remember").checked = true;
-    }
-  } catch(_) {}
+    const prompt = buildPrompt();
+    const koText = softTrim($("#koText").value);
 
-  $("remember").addEventListener("change", () => {
-    if (!$("remember").checked) {
-      sessionStorage.removeItem("notice_safe_cfg");
-    } else {
-      sessionStorage.setItem("notice_safe_cfg", JSON.stringify({
-        endpoint: $("endpoint").value.trim(),
-        token: $("token").value
-      }));
-    }
-  });
+    $("#outKO").textContent = doKO ? (koText || "-") : "-";
+    $("#outEN").textContent = "-";
+    $("#outJA").textContent = "-";
+    setMini("enTag", "-");
+    setMini("jaTag", "-");
 
-  ["endpoint", "token"].forEach(id => {
-    $(id).addEventListener("input", () => {
-      if ($("remember").checked) {
-        sessionStorage.setItem("notice_safe_cfg", JSON.stringify({
-          endpoint: $("endpoint").value.trim(),
-          token: $("token").value
-        }));
-      }
-    });
-  });
-
-  // ---------- Main ----------
-  $("btnRun").addEventListener("click", async () => {
-    const endpoint = $("endpoint").value.trim();
-    const token = $("token").value; // password input
-
-    if (!endpoint) {
-      alert("Worker Translate Endpoint를 먼저 입력하세요.\n예: https://broad-shadow-26ac.kkwak2kg.workers.dev/translate");
+    if(!softTrim($("#endpoint").value)){
+      setStatus("bad", "endpoint 필요");
       return;
     }
 
-    // UI values
-    const data = {
-      salute: $("salute").value.trim(),
-      speaker: $("speaker").value.trim(),
-      category: $("category").value,
-      when: $("when").value,
-      bodyKo: $("bodyKo").value.trim()
-    };
-
-    // Reset outputs
-    ["KO","EN","JA"].forEach(l => { writeOut(l, ""); setBoxStatus(l, "-", true); });
-    setPill("시작...", "warn");
-
-    // Always show KO as original (if selected)
-    const doKO = $("langKO").checked;
-    const doEN = $("langEN").checked;
-    const doJA = $("langJA").checked;
-
-    if (doKO) {
-      setBoxStatus("KO", "LOCAL", true);
-      writeOut("KO", data.bodyKo);
-    } else {
-      setBoxStatus("KO", "SKIP", true);
-      writeOut("KO", "");
-    }
-
-    const targets = [];
-    if (doEN) targets.push({ code:"EN", targetLabel:"English", modelHint:"auto" });
-    if (doJA) targets.push({ code:"JA", targetLabel:"Japanese", modelHint:"auto" });
-
-    if (targets.length === 0) {
-      setPill("완료 (번역 대상 없음)", "ok");
+    if(!koText){
+      setStatus("bad", "원문 필요");
       return;
     }
 
-    // Sequential translate (simple + reliable)
-    for (const t of targets) {
-      try {
-        setBoxStatus(t.code, "REQUEST...", true);
+    $("#runBtn").disabled = true;
+    setStatus("warn", "요청 중...");
 
-        // Payload: Worker 쪽이 어떤 포맷을 받는지 몰라서 호환성을 넓게 잡음.
-        // - 권장: Worker에서 { model, messages } 받는 형태라면 그대로 먹습니다.
-        const prompt = buildPrompt({ ...data, target: t.targetLabel });
-
-        const payload = {
-          // Worker가 Groq chat.completions 프록시라면 아래 형태가 가장 범용
-          model: "llama-3.1-8b-instant",
-          messages: [
-            { role: "system", content: "You are a helpful translation assistant." },
-            { role: "user", content: prompt }
-          ]
-        };
-
-        const json = await callWorkerTranslate(endpoint, token, payload);
-        const out = extractTextFromResponse(json);
-
-        setBoxStatus(t.code, "OK", true);
-        writeOut(t.code, out);
-      } catch (e) {
-        const st = e.status ? `ERR ${e.status}` : "ERR";
-        setBoxStatus(t.code, st, false);
-        writeOut(t.code, (e && e.message) ? e.message : String(e));
-
-        // 401이면 토큰 문제를 더 친절히 안내
-        if (e.status === 401) {
-          setPill("401: X-Translate-Token 누락/불일치", "bad");
-        } else if (e.status === 403) {
-          setPill("403: 서버/업스트림 거부(키/권한/CORS/토큰 등)", "bad");
-        } else {
-          setPill("오류 발생", "bad");
-        }
+    try{
+      // 순차 처리(디버깅 쉬움)
+      if(doEN){
+        setMini("enTag", "REQ");
+        const en = await callWorker("en", prompt);
+        $("#outEN").textContent = en || "-";
+        setMini("enTag", "OK");
+      }else{
+        $("#outEN").textContent = "-";
+        setMini("enTag", "-");
       }
-    }
 
-    // Done
-    const anyErr = ["EN","JA"].some(l => $("box"+l).classList.contains("err"));
-    setPill(anyErr ? "완료(일부 실패)" : "완료", anyErr ? "warn" : "ok");
+      if(doJA){
+        setMini("jaTag", "REQ");
+        const ja = await callWorker("ja", prompt);
+        $("#outJA").textContent = ja || "-";
+        setMini("jaTag", "OK");
+      }else{
+        $("#outJA").textContent = "-";
+        setMini("jaTag", "-");
+      }
+
+      setStatus("good", "완료");
+    }catch(err){
+      const status = err?.status;
+      if(status === 401) setStatus("bad", "401 Unauthorized (토큰 확인)");
+      else if(status === 403) setStatus("bad", "403 Forbidden (upstream/권한)");
+      else if(status === 400) setStatus("bad", "400 Bad Request (Worker 검증 실패)");
+      else setStatus("bad", "실패");
+      // 에러 표시를 EN 박스에 넣어 두면 바로 눈에 띕니다.
+      $("#outEN").textContent = `ERROR: ${err?.message || err}`;
+    }finally{
+      $("#runBtn").disabled = false;
+    }
+  }
+
+  // ---- Wire up ----
+  $("#runBtn").addEventListener("click", run);
+
+  $("#saveSession").addEventListener("change", ()=>{
+    if($("#saveSession").checked){
+      saveSession();
+    }else{
+      clearSession();
+    }
   });
+
+  // 초기 값
+  loadSession();
+  setStatus("warn", "대기중");
+
+  // 기본 endpoint가 비어있으면 안내
+  if(!softTrim($("#endpoint").value)){
+    // 사용자가 이미 쓰던 worker 주소가 있으면 여기 프리필로 넣어도 됩니다.
+    // $("#endpoint").value = "https://broad-shadow-26ac.kkwak2kg.workers.dev/translate";
+  }
+})();
 </script>
 </body>
 </html>
