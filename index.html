@@ -1,72 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <script>
-  function getSelectedLangsSafe(){
-    const boxes = Array.from(document.querySelectorAll('input.lang[type="checkbox"]'));
-    const langs = boxes.filter(b=>b.checked).map(b=>b.value);
-    return langs.length ? langs : ["KO"];
-  }
-
-  // ✅ 캐시/SW 꼬임 방지: 남아있으면 해제
-  (async () => {
-    try {
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister()));
-      }
-      if (window.caches) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-    } catch (e) {}
-  })();
-
-  window.__safeGenerate = function(){
-    try{
-      if(typeof window.generate === 'function'){
-        const r = window.generate();
-        if(r && typeof r.then === 'function'){
-          r.catch((e)=>{
-            console.error(e);
-            alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
-          });
-        }
-        return r;
-      }
-    }catch(e){ console.error(e); }
-    alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
-    return false;
-  };
-
-  function renderResults(map){
-    const resArea = document.getElementById("resArea");
-    const tabH = document.getElementById("tabH");
-    const tabB = document.getElementById("tabB");
-    if(!resArea || !tabH || !tabB) return;
-    resArea.style.display = "block";
-    const langs = Object.keys(map);
-    tabH.innerHTML = langs.map((l,i)=>`<button class="tab ${i===0?'active':''}" data-lang="${l}">${l}</button>`).join("");
-    tabB.innerHTML = langs.map((l,i)=>`<div class="tab-pane ${i===0?'active':''}" data-lang="${l}"><pre class="out-pre"></pre></div>`).join("");
-    langs.forEach((l)=>{
-      const pane = tabB.querySelector(`.tab-pane[data-lang="${l}"] pre`);
-      if(pane) pane.textContent = map[l] || "";
-    });
-    tabH.querySelectorAll(".tab").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        tabH.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
-        tabB.querySelectorAll(".tab-pane").forEach(p=>p.classList.remove("active"));
-        btn.classList.add("active");
-        const l = btn.dataset.lang;
-        tabB.querySelector(`.tab-pane[data-lang="${l}"]`).classList.add("active");
-      });
-    });
-  }
-  </script>
-
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Professional Notice Master v40.9 (Groq-only 번역 + 키 sanitize + worker-block)</title>
+  <title>Professional Notice Master v41.1 (Worker+Token)</title>
 
   <style>
     body { background-color:#0f172a; color:#f8fafc; font-family:'Pretendard',system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif; display:flex; justify-content:center; padding:20px; }
@@ -111,33 +48,24 @@
 
     .hidden { display:none !important; }
 
-    .warnbox { margin: 14px 0 0; padding: 14px 16px; background:#0f172a; border:1px solid rgba(255,211,138,.35); border-left:5px solid #ffd38a; border-radius:12px; color:#e2e8f0; font-size:13px; line-height:1.6; }
-    .warnbox b { color:#ffd38a; }
+    .warnbox { margin: 14px 0 0; padding: 14px 16px; background:#0f172a; border:1px solid rgba(165,180,252,.35); border-left:5px solid #a5b4fc; border-radius:12px; color:#e2e8f0; font-size:13px; line-height:1.6; }
+    .warnbox b { color:#a5b4fc; }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
   </style>
 </head>
 
 <body>
 <div class="container">
-  <h1>🎮 Professional Notice Master v40.9</h1>
+  <h1>🎮 Professional Notice Master v41.1</h1>
   <div class="sub">
     예전 UI 유지 + <b>[object Object]</b> 완전 제거 + <b>Issue 구조(현상→사과→조치→추가 안내)</b> 고정<br/>
-    다국어(EN/JA)는 <b>Groq API로만 번역</b>합니다. (워커 호출 X → CORS 오류 제거)
+    다국어(EN/JA) 번역은 <b>Cloudflare Worker(OpenAI GPT)</b>에서 처리합니다. (다른 PC에서 키 입력 불필요)
   </div>
 
   <div class="warnbox">
-    <b>필수</b>: 다국어 번역은 <b>유효한 Groq API Key</b>가 있어야 합니다.<br/>
-    아래에 키를 붙여넣고 <b>저장</b>을 누르세요. (콘솔 없이 사용 가능)<br/>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-      <input id="groqKeyInput" type="password" placeholder="gsk_로 시작하는 Groq API Key" style="flex:1; min-width:260px; padding:12px; border-radius:12px; border:1px solid #334155; background:#0f172a; color:#fff;">
-      <button type="button" id="btnSaveKey" style="padding:12px 14px; border-radius:12px; border:1px solid #334155; background:#334155; color:#fff; font-weight:900; cursor:pointer;">저장</button>
-      <button type="button" id="btnClearKey" style="padding:12px 14px; border-radius:12px; border:1px solid rgba(251,113,133,.35); background:rgba(251,113,133,.12); color:#fff; font-weight:900; cursor:pointer;">삭제</button>
-      <button type="button" id="btnTestKey" style="padding:12px 14px; border-radius:12px; border:1px solid rgba(165,180,252,.35); background:rgba(165,180,252,.14); color:#fff; font-weight:900; cursor:pointer;">키 테스트</button>
-    </div>
-    <div class="helper" id="keyHint" style="margin-top:8px;">
-      · Groq 키는 보통 <code>gsk_</code>로 시작하며 길이가 충분히 깁니다. (예: 40자 이상)<br/>
-      · 지금 저장된 키 상태는 상단 <b>번역</b> 배지에 표시됩니다.
-    </div>
+    <b>번역 방식</b>: 브라우저에 API 키를 저장하지 않습니다.<br/>
+    EN/JA 번역 요청은 Worker로만 전송됩니다: <code id="workerUrlEcho"></code><br/>
+    <b>보안</b>: 요청 헤더에 <code>X-Translate-Token</code>을 포함합니다. (Worker의 <code>TRANSLATE_TOKEN</code>과 일치해야 함)
   </div>
 
   <div class="row" style="margin-top:18px;">
@@ -325,90 +253,22 @@
 </div>
 
 <script>
+  console.log("[NoticeMaster] v41.1 loaded");
+
   // =========================
   // CONFIG
   // =========================
-  const LS_KEY_NAME = "GROQ_API_KEY";
-  const GROQ_MODEL_CANDIDATES = ["llama-3.3-70b-versatile","llama-3.1-70b-versatile","llama-3.1-8b-instant"];
-  const APP_VERSION = "v40.9";
-  console.log("[NoticeMaster]", APP_VERSION, "loaded");
+  // 1) Worker URL: 본인 Worker 도메인으로 수정
+  const TRANSLATE_WORKER_URL = "https://notice-translate.kkwak2kg.workers.dev/translate";
+  document.getElementById("workerUrlEcho").textContent = TRANSLATE_WORKER_URL;
 
-  // ✅ 방어막: 어떤 코드가 남아있더라도 워커(translate) 호출은 차단 (CORS 소음 제거)
-  (function blockWorkerTranslate(){
-    const _fetch = window.fetch;
-    if(typeof _fetch !== "function") return;
-    window.fetch = function(input, init){
-      try{
-        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
-        if(url && url && url.includes("notice" + "-translate" + ".kkwak2kg" + ".workers" + ".dev")){
-          throw new Error("Worker translate is disabled (Groq-only). Please deploy the latest index.html.");
-        }
-      }catch(e){
-        // if we throw above, it will be caught by caller anyway
-        if(String(e && e.message).includes("Worker translate is disabled")) throw e;
-      }
-      return _fetch.apply(this, arguments);
-    };
-  })();
+  // 2) Worker 보안 토큰: Worker의 env.TRANSLATE_TOKEN 과 동일해야 함
+  //    예) Worker에 TRANSLATE_TOKEN=NOTICE_INTERNAL_V1 로 설정했다면, 아래도 동일하게.
+  const TRANSLATE_TOKEN = "NOTICE_INTERNAL_V1";
 
-
-
-  function getApiKey(){
-    const raw = (localStorage.getItem(LS_KEY_NAME) || "");
-    // ✅ 헤더 에러 방지: 공백/개행 제거 + 따옴표 제거 + 비ASCII 제거
-    return raw
-      .trim()
-      .replace(/^["']|["']$/g, "")
-      .replace(/\s+/g, "")
-      .replace(/[^\x20-\x7E]/g, "");
-  }
-
-  function isLikelyValidGroqKey(key){
-    const k = (key || "").trim();
-    // gsk_ 로 시작 + 충분히 긴 길이(placeholder/부분키 차단)
-    return /^gsk_[\x20-\x7E]+$/.test(k) && k.length >= 40;
-  }
-
-  function setKeyUiFromStorage(){
-    const input = document.getElementById("groqKeyInput");
-    if(input){
-      // 보안상 전체 노출은 피하고, 입력란은 비워둡니다.
-      input.value = "";
-      input.placeholder = isLikelyValidGroqKey(getApiKey())
-        ? "Groq 키가 저장되어 있습니다 (재설정하려면 여기에 붙여넣기)"
-        : "gsk_로 시작하는 Groq API Key";
-    }
-  }
-
-  async function testGroqKey(){
-    const k = getApiKey();
-    if(!isLikelyValidGroqKey(k)){
-      setTranslatePill("번역: Groq 키 필요", "bad");
-      alert("Groq API Key가 비어있거나 형식/길이가 올바르지 않습니다. (gsk_로 시작, 40자 이상)");
-      return;
-    }
-    try{
-      setTranslatePill("번역: 키 테스트", "info");
-      const res = await fetch("https://api.groq.com/openai/v1/models", {
-        headers: { "Authorization": "Bearer " + k }
-      });
-      if(res.ok){
-        setTranslatePill("번역: 키 정상", "ok");
-        alert("Groq 키가 정상입니다. (번역 가능)");
-      }else{
-        setTranslatePill("번역: 키 오류", "bad");
-        const t = await res.text().catch(()=> "");
-        alert("Groq 키가 유효하지 않습니다. (HTTP " + res.status + ")\n" + t);
-      }
-    }catch(e){
-      setTranslatePill("번역: 테스트 실패", "bad");
-      alert("키 테스트 중 네트워크 오류가 발생했습니다. 콘솔을 확인해 주세요.");
-      console.error(e);
-    }
-  }
-
-
-  // ✅ 안전 문자열화: [object Object] 완전 제거
+  // =========================
+  // Utilities
+  // =========================
   function safeToText(value){
     if(value === null) return "null";
     if(value === undefined) return "";
@@ -433,22 +293,6 @@
       return tag === "[object Object]" ? "[Unserializable Object]" : tag;
     }
   }
-
-  const $ = (id)=>document.getElementById(id);
-  function bindGlobals(){
-    const ids = [
-      "noticeType","loading","resArea","tabH","tabB","pillTemplate","pillApology","pillTranslate",
-      "dtFormat","userTitle","speakerName",
-      "issueDt","issueText","impact","impactSure",
-      "maintKind","maintStatus","maintPurpose","maintSubtitle","maintContent","maintStart","maintEnd","impactInclude",
-      "doneIssue","doneDt","doneExtra","doneImpactSure",
-      "fixVerb"
-    ];
-    ids.forEach(id=>{ const el = $(id); if(el) window[id]=el; });
-  }
-  document.addEventListener("DOMContentLoaded", bindGlobals);
-
-  let savedResults = {};
 
   function pad2(n){ return String(n).padStart(2,'0'); }
   function formatDT(dtStr, fmt){
@@ -476,24 +320,6 @@
     return `(${m}분)`;
   }
 
-  function syncMaintSubtitle(){
-    const kind = maintKind.value;
-    const status = maintStatus.value === "planned" ? "진행 예정 안내" : "진행 안내";
-    maintSubtitle.value = `${kind} 점검 ${status}`;
-  }
-
-  function refreshPills(){
-    pillTemplate.textContent = "템플릿: " + noticeType.options[noticeType.selectedIndex].text;
-  }
-
-  function setTranslatePill(text, mode){
-    const el = $("pillTranslate");
-    if(!el) return;
-    el.textContent = text;
-    el.classList.remove("ok","info","warn","bad");
-    el.classList.add(mode || "warn");
-  }
-
   function cleanBracketTitle(s){
     if(!s) return "";
     let t = String(s).trim();
@@ -502,24 +328,20 @@
     }
     return t;
   }
-
   function normalizePurpose(purpose){
     return String(purpose || "").replace(/\s*(수정|해결|조치)\s*$/g, "").trim();
   }
-
   function ensurePhenomenonPhrase(base){
     const t = String(base || "").trim();
     if(!t) return "";
     if(t.endsWith("현상")) return t;
     return t + " 현상";
   }
-
   function buildMaintBlock(subtitle, windowText, content){
     const sub = cleanBracketTitle(subtitle) || "점검 안내";
     const cont = (content || "").trim();
     return `[${sub}]\n- 진행 일시: ${windowText}\n- 점검 내용: ${cont}\n\n점검이 안내해 드린 시간보다 조기 종료되거나 연장될 경우 별도 공지를 통해 다시 한번 안내해 드리겠습니다.`;
   }
-
   function josa(word, pair){
     const w = (word||"").trim();
     if(!w) return pair.split("/")[0];
@@ -535,7 +357,9 @@
     return hasJong ? a : b;
   }
 
-  // ✅ KO 이슈 공지: 구조 고정 + 객체 문자열화 방지
+  // =========================
+  // KO generator (fixed structure)
+  // =========================
   function buildIssueTextKO(payload){
     const caller = safeToText((payload.speaker||"").trim() || "바바");
     const honor  = safeToText((payload.userTitle||"").trim() || "모험가 여러분");
@@ -663,76 +487,47 @@
   }
 
   // =========================
-  // Groq translation (ONLY)
+  // Worker translate (with token header)
   // =========================
-  async function groqTranslateOne(koreanNotice, target){
-    const apiKey = getApiKey();
-    if(!apiKey) throw new Error("NO_GROQ_KEY");
+  async function translateViaWorker(koreanNotice, targets){
+    const resp = await fetch(TRANSLATE_WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Translate-Token": TRANSLATE_TOKEN
+      },
+      body: JSON.stringify({ text: koreanNotice, targets })
+    });
 
-    const targetName = target === "EN" ? "English" : target === "JA" ? "Japanese" : target;
-    const sys =
-`You are a professional game live-ops localization specialist.
-Translate Korean service notices into ${targetName}.
-Keep a polite, clear tone.
-Preserve line breaks and structure.
-Do NOT add extra information.
-Do NOT add greetings that are not in the original.
-Return only the translated text.`;
-
-    let lastErr = null;
-
-    for(const model of GROQ_MODEL_CANDIDATES){
-      try{
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + apiKey
-          },
-          body: JSON.stringify({
-            model,
-            temperature: 0.2,
-            messages: [
-              { role: "system", content: sys },
-              { role: "user", content: String(koreanNotice || "") }
-            ]
-          })
-        });
-
-        if(!res.ok){
-          const t = await res.text().catch(()=> "");
-          throw new Error(`GROQ_${model}_HTTP_${res.status}: ${t}`);
-        }
-
-        const data = await res.json();
-        const text = data?.choices?.[0]?.message?.content;
-        if(typeof text !== "string" || !text.trim()){
-          throw new Error(`GROQ_${model}_EMPTY`);
-        }
-        return text.trim();
-      }catch(e){
-        lastErr = e;
-      }
+    if(!resp.ok){
+      const t = await resp.text().catch(()=> "");
+      throw new Error(`WORKER_HTTP_${resp.status}: ${t}`);
     }
-    throw lastErr || new Error("GROQ_FAILED");
-  }
-
-  async function groqTranslateMany(koreanNotice, langs){
-    const targets = (langs || []).filter(l => l !== "KO");
-    const out = {};
-    if(!targets.length) return out;
-
-    setTranslatePill("번역: Groq", "info");
-    for(const t of targets){
-      out[t] = await groqTranslateOne(koreanNotice, t);
-    }
-    setTranslatePill("번역: 완료", "ok");
-    return out;
+    const data = await resp.json().catch(()=> ({}));
+    const translations = data?.translations;
+    if(!translations || typeof translations !== "object") throw new Error("WORKER_BAD_RESPONSE");
+    return translations;
   }
 
   // =========================
-  // Render
+  // UI glue
   // =========================
+  let savedResults = {};
+  const tabH = document.getElementById("tabH");
+  const tabB = document.getElementById("tabB");
+  const resArea = document.getElementById("resArea");
+  const loading = document.getElementById("loading");
+  const noticeType = document.getElementById("noticeType");
+  const dtFormat = document.getElementById("dtFormat");
+
+  function setTranslatePill(text, mode){
+    const el = document.getElementById("pillTranslate");
+    if(!el) return;
+    el.textContent = text;
+    el.classList.remove("ok","info","warn","bad");
+    el.classList.add(mode || "warn");
+  }
+
   function renderTabs(langs){
     tabH.innerHTML="";
     langs.forEach((l,i)=>{
@@ -758,93 +553,46 @@ Return only the translated text.`;
     navigator.clipboard.writeText(tabB.innerText);
     alert("복사되었습니다.");
   }
+  window.copyAll = copyAll;
+
+  function syncMaintSubtitle(){
+    const kind = document.getElementById("maintKind").value;
+    const status = document.getElementById("maintStatus").value === "planned" ? "진행 예정 안내" : "진행 안내";
+    document.getElementById("maintSubtitle").value = `${kind} 점검 ${status}`;
+  }
+  window.syncMaintSubtitle = syncMaintSubtitle;
 
   function toggleSections(){
-    const typeEl = document.getElementById("noticeType");
-    const type = typeEl ? typeEl.value : "issue";
+    const type = noticeType.value;
+    document.getElementById("maintSection").classList.toggle("hidden", type !== "maint");
+    document.getElementById("issueSection").classList.toggle("hidden", type !== "issue");
+    document.getElementById("doneSection").classList.toggle("hidden", type !== "done");
 
-    const maint = document.getElementById("maintSection");
-    const issue = document.getElementById("issueSection");
-    const done  = document.getElementById("doneSection");
-
-    if(maint) maint.classList.toggle("hidden", type !== "maint");
-    if(issue) issue.classList.toggle("hidden", type !== "issue");
-    if(done)  done.classList.toggle("hidden", type !== "done");
-
-    const pill = document.getElementById("pillTemplate");
-    if(pill && typeEl){
-      pill.textContent = "템플릿: " + typeEl.options[typeEl.selectedIndex].text;
-    }
+    document.getElementById("pillTemplate").textContent = "템플릿: " + noticeType.options[noticeType.selectedIndex].text;
   }
 
-  function initUI(){
+  noticeType.addEventListener("change", toggleSections);
+  toggleSections();
+
+  // safe wrapper
+  window.__safeGenerate = function(){
     try{
-      const typeEl = document.getElementById("noticeType");
-      if(typeEl){
-        typeEl.addEventListener("change", () => {
-          toggleSections();
-          refreshPills();
+      const r = window.generate();
+      if(r && typeof r.then === 'function'){
+        r.catch((e)=>{
+          console.error(e);
+          alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
         });
       }
-    }catch(e){}
-    try{ toggleSections(); }catch(e){}
-  }
-  document.addEventListener("DOMContentLoaded", initUI);
-  // Groq Key UI wiring
-  document.addEventListener("DOMContentLoaded", () => {
-    const btnSave = document.getElementById("btnSaveKey");
-    const btnClear = document.getElementById("btnClearKey");
-    const btnTest = document.getElementById("btnTestKey");
-    const input = document.getElementById("groqKeyInput");
-
-    function updatePillFromKey(){
-      const k = getApiKey();
-      if(isLikelyValidGroqKey(k)) setTranslatePill("번역: Groq 키 저장됨", "ok");
-      else setTranslatePill("번역: Groq 키 필요", "warn");
-      setKeyUiFromStorage();
+      return r;
+    }catch(e){
+      console.error(e);
+      alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
+      return false;
     }
+  };
 
-    if(btnSave){
-      btnSave.addEventListener("click", () => {
-        const raw = (input && input.value) ? input.value : "";
-        // 저장 시에도 sanitize 적용
-        const cleaned = String(raw)
-          .trim()
-          .replace(/^["']|["']$/g, "")
-          .replace(/\s+/g, "")
-          .replace(/[^\x20-\x7E]/g, "");
-        localStorage.setItem(LS_KEY_NAME, cleaned);
-        if(isLikelyValidGroqKey(cleaned)){
-          alert("Groq 키를 저장했습니다.");
-        }else{
-          alert("키를 저장했지만 형식/길이가 유효하지 않습니다. (gsk_로 시작, 40자 이상)");
-        }
-        updatePillFromKey();
-      });
-    }
-
-    if(btnClear){
-      btnClear.addEventListener("click", () => {
-        localStorage.removeItem(LS_KEY_NAME);
-        alert("Groq 키를 삭제했습니다.");
-        updatePillFromKey();
-      });
-    }
-
-    if(btnTest){
-      btnTest.addEventListener("click", () => testGroqKey());
-    }
-
-    // initial
-    updatePillFromKey();
-  });
-
-
-  // =========================
-  // Main generate
-  // =========================
   async function generate(){
-    bindGlobals();
     const langs = [...document.querySelectorAll(".lang:checked")].map(e=>e.value);
     if(!langs.length) return alert("언어를 1개 이상 선택해 주세요.");
 
@@ -857,8 +605,8 @@ Return only the translated text.`;
 
     const payload = {
       type,
-      userTitle: (userTitle.value.trim() || "이용자 여러분"),
-      speaker: (speakerName.value.trim() || "운영팀"),
+      userTitle: (document.getElementById("userTitle").value.trim() || "이용자 여러분"),
+      speaker: (document.getElementById("speakerName").value.trim() || "운영팀"),
       dtFormat: dtFmt,
       langs,
       maint: {},
@@ -868,6 +616,17 @@ Return only the translated text.`;
 
     try{
       if(type === "maint"){
+        const maintPurpose = document.getElementById("maintPurpose");
+        const maintStart = document.getElementById("maintStart");
+        const maintEnd = document.getElementById("maintEnd");
+        const maintKind = document.getElementById("maintKind");
+        const maintStatus = document.getElementById("maintStatus");
+        const maintSubtitle = document.getElementById("maintSubtitle");
+        const maintContent = document.getElementById("maintContent");
+        const impact = document.getElementById("impact");
+        const impactInclude = document.getElementById("impactInclude");
+        const fixVerb = document.getElementById("fixVerb");
+
         if(!maintPurpose.value.trim()) return alert("점검 목적을 입력해 주세요.");
         if(!maintStart.value || !maintEnd.value) return alert("점검 시작/종료 시간을 입력해 주세요.");
 
@@ -888,6 +647,10 @@ Return only the translated text.`;
       }
 
       if(type === "issue"){
+        const issueDt = document.getElementById("issueDt");
+        const issueText = document.getElementById("issueText");
+        const impactSure = document.getElementById("impactSure");
+
         if(!issueDt.value) return alert("발생/확인 일시를 입력해 주세요.");
         if(!issueText.value.trim()) return alert("현상 입력을 작성해 주세요.");
 
@@ -896,13 +659,15 @@ Return only the translated text.`;
           text: issueText.value.trim(),
           apology: (impactSure ? impactSure.value : "yes")
         };
-        payload.issueText = payload.issue.text;
-        payload.issueAt = payload.issue.dtRaw;
-        payload.impactSure = payload.issue.apology;
         payload.noticeType = "issue";
       }
 
       if(type === "done"){
+        const doneIssue = document.getElementById("doneIssue");
+        const doneDt = document.getElementById("doneDt");
+        const doneExtra = document.getElementById("doneExtra");
+        const doneImpactSure = document.getElementById("doneImpactSure");
+
         const di = (doneIssue ? doneIssue.value : "").trim();
         const dd = (doneDt ? doneDt.value : "");
         if(!di) return alert("조치 대상 현상을 입력해 주세요.");
@@ -916,34 +681,27 @@ Return only the translated text.`;
         payload.noticeType = "done";
       }
 
-      // ✅ KO는 무조건 생성
+      // KO always
       const koText = buildKOText(payload);
 
       savedResults = {};
       if(langs.includes("KO")) savedResults.KO = { notice: koText };
 
-      // ✅ EN/JA 선택 시: Groq 키 없으면 KO만 + 경고
-      const needTr = langs.filter(l => l !== "KO");
-      if(needTr.length){
-        const k = getApiKey();
-        if(!isLikelyValidGroqKey(k)){
-          setTranslatePill("번역: Groq 키 필요", "bad");
-          for(const l of needTr){
-            savedResults[l] = { notice: "번역 생성에 실패했습니다. (Groq API Key가 비어있거나 유효하지 않습니다: gsk_로 시작, 40자 이상)\n\n" + koText };
+      const targets = langs.filter(l => l !== "KO");
+      if(targets.length){
+        try{
+          setTranslatePill("번역: Worker", "info");
+          const translations = await translateViaWorker(koText, targets);
+          for(const t of targets){
+            const tr = safeToText(translations[t] ?? "").trim();
+            savedResults[t] = { notice: tr || ("번역 생성에 실패했습니다. (Worker 응답 확인)\n\n" + koText) };
           }
-        }else{
-          try{
-            const tr = await groqTranslateMany(koText, langs);
-            for(const l of needTr){
-              const t = tr[l];
-              savedResults[l] = { notice: (typeof t === "string" && t.trim()) ? t.trim() : ("번역 생성에 실패했습니다.\n\n"+koText) };
-            }
-          }catch(e){
-            console.error(e);
-            setTranslatePill("번역: 실패( KO만 )", "bad");
-            for(const l of needTr){
-              savedResults[l] = { notice: "번역 생성에 실패했습니다. (Groq API 응답/키를 확인해 주세요)\n\n" + koText };
-            }
+          setTranslatePill("번역: 완료", "ok");
+        }catch(e){
+          console.error(e);
+          setTranslatePill("번역: 실패(KO만)", "bad");
+          for(const t of targets){
+            savedResults[t] = { notice: "번역 생성에 실패했습니다. (네트워크/Worker/Token을 확인해 주세요)\n\n" + koText };
           }
         }
       }else{
@@ -958,13 +716,12 @@ Return only the translated text.`;
       loading.style.display="none";
     }
   }
+
   window.generate = generate;
 
   // init defaults
   (function init(){
-    toggleSections();
-    syncMaintSubtitle();
-    refreshPills();
+    try{ syncMaintSubtitle(); }catch(e){}
     setTranslatePill("번역: 준비", "warn");
 
     const now = new Date();
@@ -979,13 +736,13 @@ Return only the translated text.`;
     const mi = pad2(now.getMinutes());
     const cur = `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 
-    issueDt.value = cur;
-    doneDt.value = cur;
+    document.getElementById("issueDt").value = cur;
+    document.getElementById("doneDt").value = cur;
 
     const end = new Date(now.getTime() + 2*60*60*1000);
     const em = pad2(end.getMonth()+1), ed = pad2(end.getDate()), eh = pad2(end.getHours()), eMi = pad2(end.getMinutes());
-    maintStart.value = cur;
-    maintEnd.value = `${end.getFullYear()}-${em}-${ed}T${eh}:${eMi}`;
+    document.getElementById("maintStart").value = cur;
+    document.getElementById("maintEnd").value = `${end.getFullYear()}-${em}-${ed}T${eh}:${eMi}`;
   })();
 </script>
 </body>
