@@ -3,747 +3,516 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Professional Notice Master v41.1 (Worker+Token)</title>
-
+  <title>Professional Notice Master (Safe Token Input)</title>
   <style>
-    body { background-color:#0f172a; color:#f8fafc; font-family:'Pretendard',system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif; display:flex; justify-content:center; padding:20px; }
-    .container { width:100%; max-width:980px; background:#1e293b; padding:40px; border-radius:24px; box-shadow:0 20px 50px rgba(0,0,0,.6); border:1px solid #334155; }
-    h1 { text-align:center; color:#22d3ee; margin:0 0 10px; font-size:26px; font-weight:900; }
-    .sub { text-align:center; color:#94a3b8; margin:0 0 26px; font-size:13px; line-height:1.6; }
-
-    .form-group { margin-bottom:18px; }
-    label { display:block; margin-bottom:10px; color:#94a3b8; font-weight:900; font-size:14px; }
-    input, select, textarea { width:100%; padding:14px; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:12px; box-sizing:border-box; font-size:15px; outline:none; }
-    textarea { resize: vertical; min-height: 90px; }
-    input:focus, select:focus, textarea:focus { border-color:#22d3ee; box-shadow:0 0 0 3px rgba(34,211,238,.18); }
-
-    .row { display:flex; gap:15px; flex-wrap:wrap; }
-    .row > .form-group { flex:1; min-width:250px; }
-
-    .lang-group { display:flex; gap:15px; background:#0f172a; padding:12px 20px; border-radius:12px; border:1px solid #334155; align-items:center; flex-wrap:wrap; }
-    .lang-group label { margin:0; font-size:13px; color:#e2e8f0; font-weight:900; display:flex; align-items:center; gap:8px; }
-    .lang-group input { width:auto; padding:0; }
-
-    .helper { color:#94a3b8; font-size:12px; margin-top:8px; line-height:1.6; }
-
-    .pillbar { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-    .pill { font-size:12px; color:#94a3b8; border:1px solid #334155; background:#0f172a; padding:8px 10px; border-radius:999px; }
-    .pill.ok { color:#9be7b1; border-color:rgba(155,231,177,.35); }
-    .pill.info { color:#a5b4fc; border-color:rgba(165,180,252,.35); }
-    .pill.warn { color:#ffd38a; border-color:rgba(255,211,138,.35); }
-    .pill.bad { color:#fb7185; border-color:rgba(251,113,133,.35); }
-
-    .make-btn { width:100%; padding:20px; background:linear-gradient(135deg,#22d3ee,#0ea5e9); color:#0f172a; border:none; font-weight:900; border-radius:14px; cursor:pointer; font-size:18px; margin-top:10px; }
-    .make-btn:active { transform:translateY(1px); }
-
-    #loading { display:none; text-align:center; color:#22d3ee; margin:18px 0; font-weight:900; }
-
-    .tabs { display:flex; margin-top:26px; gap:6px; }
-    .tab-btn { flex:1; padding:14px; background:#334155; border:none; color:#94a3b8; cursor:pointer; border-radius:12px 12px 0 0; font-weight:900; }
-    .tab-btn.active { background:#22d3ee; color:#0f172a; }
-
-    .result-box { background:#0f172a; padding:28px 30px; border-radius:0 15px 15px 15px; white-space:pre-wrap; min-height:360px; border:1px solid #334155; border-top:none; font-size:16px; line-height:2.15; color:#e2e8f0; }
-
-    .copy-btn { width:100%; padding:16px; background:#475569; color:#fff; border-radius:12px; cursor:pointer; margin-top:16px; font-weight:900; border:none; }
-
-    .hidden { display:none !important; }
-
-    .warnbox { margin: 14px 0 0; padding: 14px 16px; background:#0f172a; border:1px solid rgba(165,180,252,.35); border-left:5px solid #a5b4fc; border-radius:12px; color:#e2e8f0; font-size:13px; line-height:1.6; }
-    .warnbox b { color:#a5b4fc; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+    :root{
+      --bg:#0b1220; --panel:#0f1a30; --panel2:#0c162b;
+      --text:#e6eefc; --muted:#9db1d6; --line:#1f3158;
+      --accent:#3dd6ff; --ok:#32d583; --warn:#fdb022; --bad:#f97066;
+      --chip:#0a1733;
+      --input:#0b1730;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:24px; background:linear-gradient(180deg,#050912 0%,#0b1220 60%);
+      color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial;
+      display:flex; justify-content:center;
+    }
+    .wrap{width:min(1100px, 100%);}
+    .card{
+      background:rgba(15,26,48,.9);
+      border:1px solid rgba(31,49,88,.7);
+      border-radius:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+      overflow:hidden;
+    }
+    .header{
+      padding:22px 22px 16px;
+      background:linear-gradient(180deg, rgba(61,214,255,.12), rgba(61,214,255,0));
+      border-bottom:1px solid rgba(31,49,88,.6);
+    }
+    h1{margin:0 0 6px; font-size:22px; letter-spacing:.2px}
+    .sub{color:var(--muted); font-size:13px; line-height:1.4}
+    .note{
+      margin-top:12px;
+      padding:12px 14px;
+      background:rgba(12,22,43,.9);
+      border:1px solid rgba(31,49,88,.7);
+      border-radius:14px;
+      color:var(--muted);
+      font-size:12.5px;
+      line-height:1.5;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      padding:18px 22px 22px;
+    }
+    @media (max-width: 900px){
+      .grid{grid-template-columns:1fr;}
+    }
+    .panel{
+      background:rgba(12,22,43,.9);
+      border:1px solid rgba(31,49,88,.7);
+      border-radius:16px;
+      padding:14px;
+    }
+    .panel h2{
+      margin:0 0 10px;
+      font-size:14px;
+      color:#d7e6ff;
+      letter-spacing:.2px;
+    }
+    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px;}
+    input, select, textarea{
+      width:100%;
+      background:rgba(11,23,48,.95);
+      border:1px solid rgba(31,49,88,.8);
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+      font-size:14px;
+    }
+    textarea{min-height:90px; resize:vertical;}
+    input:focus, select:focus, textarea:focus{border-color:rgba(61,214,255,.9); box-shadow:0 0 0 3px rgba(61,214,255,.12);}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+    .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+    @media (max-width: 560px){ .row, .row3{grid-template-columns:1fr;} }
+    .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      background:rgba(10,23,51,.9);
+      border:1px solid rgba(31,49,88,.8);
+      font-size:12px;
+      color:var(--muted);
+      user-select:none;
+    }
+    .chip input{width:auto; margin:0;}
+    .btn{
+      width:100%;
+      margin-top:12px;
+      padding:14px 14px;
+      border:0;
+      border-radius:14px;
+      color:#031018;
+      font-weight:800;
+      font-size:15px;
+      cursor:pointer;
+      background:linear-gradient(135deg, rgba(61,214,255,1), rgba(50,213,131,1));
+      box-shadow:0 10px 20px rgba(0,0,0,.25);
+    }
+    .btn:active{transform:translateY(1px);}
+    .statusbar{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+    .pill{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(31,49,88,.8);
+      background:rgba(10,23,51,.9);
+      color:var(--muted);
+    }
+    .pill.ok{border-color:rgba(50,213,131,.6); color:#b8f5d6;}
+    .pill.bad{border-color:rgba(249,112,102,.6); color:#ffd1cd;}
+    .pill.warn{border-color:rgba(253,176,34,.6); color:#ffe6b0;}
+    .outGrid{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    @media (max-width: 900px){ .outGrid{grid-template-columns:1fr;} }
+    .outBox{
+      background:rgba(11,18,32,.7);
+      border:1px solid rgba(31,49,88,.7);
+      border-radius:14px;
+      padding:12px;
+      min-height:140px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .outTitle{display:flex; justify-content:space-between; align-items:center;}
+    .outTitle strong{font-size:13px;}
+    .small{font-size:12px; color:var(--muted);}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    pre{
+      white-space:pre-wrap;
+      word-break:break-word;
+      margin:0;
+      color:#dbe9ff;
+      font-size:13px;
+      line-height:1.45;
+    }
+    .err{
+      border-color:rgba(249,112,102,.65) !important;
+      background:rgba(249,112,102,.08) !important;
+    }
   </style>
 </head>
-
 <body>
-<div class="container">
-  <h1>🎮 Professional Notice Master v41.1</h1>
-  <div class="sub">
-    예전 UI 유지 + <b>[object Object]</b> 완전 제거 + <b>Issue 구조(현상→사과→조치→추가 안내)</b> 고정<br/>
-    다국어(EN/JA) 번역은 <b>Cloudflare Worker(OpenAI GPT)</b>에서 처리합니다. (다른 PC에서 키 입력 불필요)
-  </div>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <h1>Professional Notice Master (vSafe)</h1>
+        <div class="sub">
+          브라우저에 <b>Groq API Key를 저장하지 않는</b> 방식입니다.<br/>
+          번역은 Cloudflare Worker의 <code>/translate</code> 엔드포인트로 요청되며, 필요 시 <code>X-Translate-Token</code>을 <b>직접 입력</b>해 사용합니다.
+        </div>
+        <div class="note">
+          ✅ 안전 포인트: GitHub Pages 코드에 토큰을 하드코딩하지 않음(공개 저장소에 올려도 유출 위험 감소).<br/>
+          ⚠️ Worker에서 <code>TRANSLATE_TOKEN</code>을 켜 두었다면, 아래 “Translate Token”을 입력해야 401이 사라집니다.
+        </div>
+      </div>
 
-  <div class="warnbox">
-    <b>번역 방식</b>: 브라우저에 API 키를 저장하지 않습니다.<br/>
-    EN/JA 번역 요청은 Worker로만 전송됩니다: <code id="workerUrlEcho"></code><br/>
-    <b>보안</b>: 요청 헤더에 <code>X-Translate-Token</code>을 포함합니다. (Worker의 <code>TRANSLATE_TOKEN</code>과 일치해야 함)
-  </div>
+      <div class="grid">
+        <!-- LEFT: Settings + Form -->
+        <div class="panel">
+          <h2>1) 연결 설정</h2>
 
-  <div class="row" style="margin-top:18px;">
-    <div class="form-group">
-      <label>유저 호칭</label>
-      <input type="text" id="userTitle" value="모험가 여러분">
-    </div>
-    <div class="form-group">
-      <label>화자명</label>
-      <input type="text" id="speakerName" value="바바">
-      <div class="helper">KO 1문단 고정: <code>안녕하세요 {호칭}, {화자}입니다.</code></div>
-    </div>
-  </div>
+          <label>Worker Translate Endpoint (예: https://xxxx.workers.dev/translate)</label>
+          <input id="endpoint" placeholder="https://YOUR-WORKER.workers.dev/translate" />
 
-  <div class="row">
-    <div class="form-group">
-      <label>언어 선택</label>
-      <div class="lang-group">
-        <label><input type="checkbox" class="lang" value="KO" checked> KO</label>
-        <label><input type="checkbox" class="lang" value="EN"> EN</label>
-        <label><input type="checkbox" class="lang" value="JA"> JA</label>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>공지 유형</label>
-      <select id="noticeType">
-        <option value="issue" selected>이슈 현상 안내</option>
-        <option value="maint">점검 안내</option>
-        <option value="done">조치 완료 안내</option>
-      </select>
-    </div>
-  </div>
+          <label>Translate Token (Worker의 TRANSLATE_TOKEN과 동일 / 없으면 비워도 됨)</label>
+          <input id="token" type="password" placeholder="(선택) X-Translate-Token 값" />
 
-  <div class="row">
-    <div class="form-group">
-      <label>일시 형식</label>
-      <select id="dtFormat">
-        <option value="slash">MM/DD HH:MM</option>
-        <option value="korean">M월 D일 HH:MM</option>
-      </select>
-      <div class="pillbar">
-        <span class="pill info" id="pillTemplate">템플릿: -</span>
-        <span class="pill ok" id="pillApology">사과: 기본 포함</span>
-        <span class="pill warn" id="pillTranslate">번역: 준비</span>
-      </div>
-    </div>
-    <div class="form-group" style="display:none;">
-      <label>점검 문장 스타일</label>
-      <select id="fixVerb">
-        <option value="수정" selected>수정</option>
-        <option value="해결">해결</option>
-      </select>
-    </div>
-  </div>
+          <div class="chips">
+            <label class="chip" title="이 PC 브라우저에만 저장됩니다(세션 저장).">
+              <input id="remember" type="checkbox" />
+              토큰/엔드포인트 세션 저장
+            </label>
+            <span class="chip mono" id="originChip"></span>
+          </div>
 
-  <!-- 점검 -->
-  <div id="maintSection" class="hidden">
-    <div class="row">
-      <div class="form-group">
-        <label>점검 종류</label>
-        <select id="maintKind" onchange="syncMaintSubtitle();">
-          <option value="긴급" selected>긴급 점검</option>
-          <option value="임시">임시 점검</option>
-          <option value="정기">정기 점검</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>점검 상태</label>
-        <select id="maintStatus" onchange="syncMaintSubtitle();">
-          <option value="planned" selected>진행 예정</option>
-          <option value="ongoing">진행 중</option>
-        </select>
-      </div>
-    </div>
+          <div class="statusbar">
+            <span class="pill" id="pillReady">대기중</span>
+            <span class="pill warn" id="pillHint">401이면 토큰/값 불일치</span>
+          </div>
 
-    <div class="form-group">
-      <label>점검 목적</label>
-      <input type="text" id="maintPurpose" placeholder="예: 배너 미노출 현상 수정 / 캐릭터 생성 불가">
-    </div>
+          <hr style="border:0;border-top:1px solid rgba(31,49,88,.6); margin:14px 0;"/>
 
-    <div class="row">
-      <div class="form-group">
-        <label>상세 블록 소제목(대괄호 자동 처리)</label>
-        <input type="text" id="maintSubtitle" value="긴급 점검 진행 예정 안내">
-      </div>
-      <div class="form-group">
-        <label>점검 내용(선택)</label>
-        <input type="text" id="maintContent" placeholder="예: 배너 미노출 현상 수정">
-      </div>
-    </div>
+          <h2>2) 공지 입력</h2>
 
-    <div class="row">
-      <div class="form-group">
-        <label>점검 시작</label>
-        <input type="datetime-local" id="maintStart">
-      </div>
-      <div class="form-group">
-        <label>점검 종료</label>
-        <input type="datetime-local" id="maintEnd">
-      </div>
-    </div>
+          <div class="row">
+            <div>
+              <label>유저 호칭</label>
+              <input id="salute" value="모험가 여러분" />
+            </div>
+            <div>
+              <label>화자명</label>
+              <input id="speaker" value="바바" />
+            </div>
+          </div>
 
-    <div class="row">
-      <div class="form-group">
-        <label>이용 영향(선택)</label>
-        <input type="text" id="impact" placeholder="예: 점검 시간 동안 게임 접속이 제한될 수 있습니다">
-      </div>
-      <div class="form-group">
-        <label>이용 영향 문장 포함</label>
-        <select id="impactInclude">
-          <option value="no" selected>미포함(기본)</option>
-          <option value="yes">포함</option>
-        </select>
-      </div>
-    </div>
-  </div>
+          <div class="row">
+            <div>
+              <label>공지 유형</label>
+              <select id="category">
+                <option>이슈 현상 안내</option>
+                <option>점검 안내</option>
+                <option>이벤트 안내</option>
+                <option>공지</option>
+              </select>
+            </div>
+            <div>
+              <label>발생/확인 일시</label>
+              <input id="when" type="datetime-local" />
+            </div>
+          </div>
 
-  <!-- 이슈 -->
-  <div id="issueSection">
-    <div class="row">
-      <div class="form-group">
-        <label>이용 영향이 확실한가요?</label>
-        <select id="impactSure">
-          <option value="yes" selected>예 (사과 포함)</option>
-          <option value="no">아니오 (사과 미포함)</option>
-        </select>
-        <div class="helper">이슈 공지의 사과 문구 포함 여부를 결정합니다.</div>
-      </div>
-      <div class="form-group">
-        <label> </label>
-        <div class="helper" style="margin-top:30px;"></div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="form-group">
-        <label>발생/확인 일시</label>
-        <input type="datetime-local" id="issueDt">
-      </div>
-      <div class="form-group">
-        <label>현상 입력</label>
-        <input type="text" id="issueText" placeholder="예: 접속 불가 현상">
+          <label>현상 입력(한국어 원문)</label>
+          <textarea id="bodyKo">접속 불가 현상</textarea>
+
+          <label>언어 선택</label>
+          <div class="chips">
+            <label class="chip"><input type="checkbox" id="langKO" checked /> KO</label>
+            <label class="chip"><input type="checkbox" id="langEN" checked /> EN</label>
+            <label class="chip"><input type="checkbox" id="langJA" /> JA</label>
+          </div>
+
+          <button class="btn" id="btnRun">번역/생성</button>
+          <div class="small" style="margin-top:10px;">
+            디버그: 아래 결과 박스에 <span class="mono">HTTP status</span>와 에러 원문이 표시됩니다.
+          </div>
+        </div>
+
+        <!-- RIGHT: Output -->
+        <div class="panel">
+          <h2>3) 결과</h2>
+          <div class="outGrid">
+            <div class="outBox" id="boxKO">
+              <div class="outTitle">
+                <strong>KO</strong>
+                <span class="small mono" id="stKO">-</span>
+              </div>
+              <pre id="outKO"></pre>
+            </div>
+            <div class="outBox" id="boxEN">
+              <div class="outTitle">
+                <strong>EN</strong>
+                <span class="small mono" id="stEN">-</span>
+              </div>
+              <pre id="outEN"></pre>
+            </div>
+            <div class="outBox" id="boxJA">
+              <div class="outTitle">
+                <strong>JA</strong>
+                <span class="small mono" id="stJA">-</span>
+              </div>
+              <pre id="outJA"></pre>
+            </div>
+          </div>
+
+          <hr style="border:0;border-top:1px solid rgba(31,49,88,.6); margin:14px 0;"/>
+
+          <h2>4) 네트워크 로그</h2>
+          <div class="outBox" style="min-height:180px;">
+            <div class="outTitle">
+              <strong>Last Request / Response</strong>
+              <span class="small mono" id="stNET">-</span>
+            </div>
+            <pre class="mono" id="netlog"></pre>
+          </div>
+
+          <div class="small" style="margin-top:10px;">
+            팁: 401이면 대개 <b>X-Translate-Token 누락/불일치</b>입니다. 403이면 Worker 내부에서 upstream(Groq/Vercel) 거부일 수 있어요.
+          </div>
+        </div>
       </div>
     </div>
   </div>
-
-  <!-- 조치완료 -->
-  <div id="doneSection" class="hidden">
-    <div class="row">
-      <div class="form-group">
-        <label>이용 영향이 확실한가요?</label>
-        <select id="doneImpactSure">
-          <option value="yes" selected>예 (사과 포함)</option>
-          <option value="no">아니오 (사과 미포함)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label> </label>
-        <div class="helper" style="margin-top:30px;"></div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="form-group">
-        <label>조치 대상 현상</label>
-        <input type="text" id="doneIssue" placeholder="예: 패키지 구매 불가 현상">
-      </div>
-      <div class="form-group">
-        <label>조치 완료 시각(선택)</label>
-        <input type="datetime-local" id="doneDt">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>추가 안내(선택)</label>
-      <input type="text" id="doneExtra" placeholder="예: 현재는 정상적으로 이용하실 수 있습니다">
-    </div>
-  </div>
-
-  <button class="make-btn" onclick="return window.__safeGenerate && window.__safeGenerate()">공지 생성</button>
-  <div id="loading">🤖 생성 중...</div>
-
-  <div id="resArea" style="display:none;">
-    <div class="tabs" id="tabH"></div>
-    <div class="result-box" id="tabB"></div>
-    <button class="copy-btn" onclick="copyAll()">공지 본문 복사</button>
-  </div>
-</div>
 
 <script>
-  console.log("[NoticeMaster] v41.1 loaded");
-
-  // =========================
-  // CONFIG
-  // =========================
-  // 1) Worker URL: 본인 Worker 도메인으로 수정
-  const TRANSLATE_WORKER_URL = "https://broad-shadow-26ac.kkwak2kg.workers.dev/translate";
-  document.getElementById("workerUrlEcho").textContent = TRANSLATE_WORKER_URL;
-
-  // 2) Worker 보안 토큰: Worker의 env.TRANSLATE_TOKEN 과 동일해야 함
-  //    예) Worker에 TRANSLATE_TOKEN=NOTICE_INTERNAL_V1 로 설정했다면, 아래도 동일하게.
-  const TRANSLATE_TOKEN = "NOTICE_INTERNAL_V1";
-
-  // =========================
-  // Utilities
-  // =========================
-  function safeToText(value){
-    if(value === null) return "null";
-    if(value === undefined) return "";
-    if(typeof value === "string") return value;
-    if(typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return String(value);
-    if(value instanceof Date) return value.toISOString?.() || String(value);
-    if(value instanceof Error) return value.stack || value.message || String(value);
-    try{
-      const seen = new WeakSet();
-      const json = JSON.stringify(value, (k,v)=>{
-        if(typeof v === "bigint") return v.toString();
-        if(typeof v === "function") return `[Function${v.name ? ":"+v.name : ""}]`;
-        if(typeof v === "object" && v !== null){
-          if(seen.has(v)) return "[Circular]";
-          seen.add(v);
-        }
-        return v;
-      }, 2);
-      return (json === undefined) ? "[Unserializable]" : json;
-    }catch{
-      const tag = Object.prototype.toString.call(value);
-      return tag === "[object Object]" ? "[Unserializable Object]" : tag;
-    }
-  }
-
-  function pad2(n){ return String(n).padStart(2,'0'); }
-  function formatDT(dtStr, fmt){
-    if(!dtStr) return "";
-    const d = new Date(dtStr);
-    if(Number.isNaN(d.getTime())) return "";
-    const m = d.getMonth()+1;
-    const day = d.getDate();
-    const hh = pad2(d.getHours());
-    const mm = pad2(d.getMinutes());
-    if(fmt === "korean") return `${m}월 ${day}일 ${hh}:${mm}`;
-    return `${pad2(m)}/${pad2(day)} ${hh}:${mm}`;
-  }
-  function diffText(startStr, endStr){
-    if(!startStr || !endStr) return "";
-    const s = new Date(startStr);
-    const e = new Date(endStr);
-    if(Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return "";
-    let mins = Math.round((e - s) / 60000);
-    if(mins <= 0) return "";
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if(h > 0 && m > 0) return `(${h}시간 ${m}분)`;
-    if(h > 0) return `(${h}시간)`;
-    return `(${m}분)`;
-  }
-
-  function cleanBracketTitle(s){
-    if(!s) return "";
-    let t = String(s).trim();
-    if((t.startsWith("[") && t.endsWith("]")) || (t.startsWith("(") && t.endsWith(")"))){
-      t = t.slice(1,-1).trim();
-    }
-    return t;
-  }
-  function normalizePurpose(purpose){
-    return String(purpose || "").replace(/\s*(수정|해결|조치)\s*$/g, "").trim();
-  }
-  function ensurePhenomenonPhrase(base){
-    const t = String(base || "").trim();
-    if(!t) return "";
-    if(t.endsWith("현상")) return t;
-    return t + " 현상";
-  }
-  function buildMaintBlock(subtitle, windowText, content){
-    const sub = cleanBracketTitle(subtitle) || "점검 안내";
-    const cont = (content || "").trim();
-    return `[${sub}]\n- 진행 일시: ${windowText}\n- 점검 내용: ${cont}\n\n점검이 안내해 드린 시간보다 조기 종료되거나 연장될 경우 별도 공지를 통해 다시 한번 안내해 드리겠습니다.`;
-  }
-  function josa(word, pair){
-    const w = (word||"").trim();
-    if(!w) return pair.split("/")[0];
-    const last = w.charCodeAt(w.length-1);
-    const isHangul = (last >= 0xAC00 && last <= 0xD7A3);
-    if(!isHangul) return pair.split("/")[0];
-    const jong = (last - 0xAC00) % 28;
-    const hasJong = jong !== 0;
-    const [a,b] = pair.split("/");
-    if(pair==="으로/로"){
-      return (!hasJong || jong===8) ? b : a;
-    }
-    return hasJong ? a : b;
-  }
-
-  // =========================
-  // KO generator (fixed structure)
-  // =========================
-  function buildIssueTextKO(payload){
-    const caller = safeToText((payload.speaker||"").trim() || "바바");
-    const honor  = safeToText((payload.userTitle||"").trim() || "모험가 여러분");
-    const dtFmt  = payload.dtFormat || "slash";
-
-    const issueObj = (payload && payload.issue && typeof payload.issue === "object") ? payload.issue : {};
-    const whenRaw = issueObj.dtRaw || payload.issueAt || payload.issueDt || "";
-    const timeStr = formatDT(whenRaw, dtFmt);
-    const timeStrSafe = safeToText(timeStr || String(whenRaw || "").trim()).trim();
-
-    const phenomenonRaw = issueObj.text || payload.issueText || payload.issueDesc || "";
-    const phenomenon = safeToText(phenomenonRaw).trim();
-
-    const impactSureVal = issueObj.apology || payload.impactSure || "yes";
-    const impactSure = String(impactSureVal).toLowerCase() !== "no";
-
-    const g = josa(phenomenon, "이/가");
-
-    const lines = [];
-    lines.push(`안녕하세요 ${honor}, ${caller}입니다.`);
-    lines.push("");
-
-    // 1) 현상
-    if(timeStrSafe){
-      lines.push(`${timeStrSafe}부터 ${phenomenon || "일부 현상"}${g} 발생하여 안내해 드립니다.`);
-    }else{
-      lines.push(`${phenomenon || "일부 현상"}${g} 발생하여 안내해 드립니다.`);
-    }
-    lines.push("");
-
-    // 2) 사과
-    if(impactSure){
-      lines.push(`해당 현상으로 이용에 불편을 드려 죄송하다는 말씀을 드립니다.`);
-      lines.push("");
-    }
-
-    // 3) 조치
-    lines.push(`현재 원인 파악 및 조치를 진행 중이며, 원활한 이용이 가능하도록 신속히 처리하겠습니다.`);
-    lines.push("");
-
-    // 4) 추가 안내
-    lines.push(`이후 진행되는 사항에 대해서는 별도 공지를 통해 다시 한번 안내해 드리겠습니다.`);
-    lines.push("");
-    lines.push("감사합니다.");
-
-    return lines.join("\n");
-  }
-
-  function buildMaintTextKO(payload){
-    const p1 = `안녕하세요 ${safeToText(payload.userTitle)}, ${safeToText(payload.speaker)}입니다.`;
-
-    const base = normalizePurpose(payload.maint.purpose) || payload.maint.purpose;
-    const subject = ensurePhenomenonPhrase(base);
-
-    const kind = payload.maint.kind;
-    const status = payload.maint.status;
-    const verb = (payload.maint.fixVerb === "해결") ? "해결" : "수정";
-    const startFmt = formatDT(payload.maint.startRaw, payload.dtFormat);
-    const endFmt = formatDT(payload.maint.endRaw, payload.dtFormat);
-
-    const timeLead = startFmt ? `${startFmt}부터 ` : "";
-    const timeRangeTail = (startFmt && endFmt) ? `${endFmt}까지 ` : "";
-
-    // ✅ 인과 유지
-    const p2 = (status === "ongoing")
-      ? `${timeLead}${subject} ${verb}을 위해 ${kind} 점검이 진행되고 있어 안내해 드립니다.`
-      : `${timeLead}${timeRangeTail}${subject} ${verb}을 위해 ${kind} 점검을 진행할 예정임을 안내해 드립니다.`;
-
-    let p3 = `해당 현상으로 이용에 불편을 드려 죄송하다는 말씀을 드리며, 점검을 통해 조치하여 원활한 플레이 환경을 제공해 드릴 수 있도록 노력하겠습니다.`;
-
-    if(payload.maint.impactInclude === "yes" && payload.maint.impact){
-      const line = payload.maint.impact.trim();
-      if(line) p3 = p3 + `\n${line}`;
-    }
-
-    const block = buildMaintBlock(payload.maint.subtitle, payload.maint.windowText, payload.maint.content || payload.maint.purpose);
-    const p5 = "감사합니다.";
-    return [p1, p2, p3, block, p5].join("\n\n");
-  }
-
-  function buildDoneTextKO(payload){
-    const caller = (payload.speaker||"").trim() || "운영팀";
-    const honor  = (payload.userTitle||"").trim() || "모험가 여러분";
-    const dtFmt  = payload.dtFormat || "slash";
-
-    const done = payload.done || {};
-    const issue = safeToText(done.issue || "").trim() || "이용 불가 현상";
-    const endRaw = done.dtRaw || "";
-    const endStr = endRaw ? formatDT(endRaw, dtFmt) : "";
-    const impactSure = (done.impactSure || "yes") === "yes";
-    const extra = safeToText(done.extra || "").trim();
-
-    const obj = josa(issue, "을/를");
-
-    const lines = [];
-    lines.push(`안녕하세요 ${honor}, ${caller}입니다.`);
-    lines.push("");
-
-    if(endStr){
-      lines.push(`앞서 안내해 드렸던 ${issue}${obj} ${endStr} 경 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`);
-    }else{
-      lines.push(`앞서 안내해 드렸던 ${issue}${obj} 조치 완료하여 현재는 정상적으로 이용하실 수 있습니다.`);
-    }
-
-    if(extra){
-      lines.push("");
-      lines.push(extra.endsWith(".") ? extra : (extra + "."));
-    }
-
-    lines.push("");
-    if(impactSure){
-      lines.push("해당 현상으로 인해 이용에 불편을 드려 죄송하다는 말씀을 드리며,");
-    }
-    lines.push("앞으로 더 안정적인 서비스 제공을 위해 최선을 다하겠습니다.");
-    lines.push("");
-    lines.push("감사합니다.");
-    return lines.join("\n");
-  }
-
-  function buildKOText(payload){
-    const t = payload.noticeType || payload.type;
-    if(t==="maint") return buildMaintTextKO(payload);
-    if(t==="done") return buildDoneTextKO(payload);
-    return buildIssueTextKO(payload);
-  }
-
-  // =========================
-  // Worker translate (with token header)
-  // =========================
-  async function translateViaWorker(koreanNotice, targets){
-    const resp = await fetch(TRANSLATE_WORKER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Translate-Token": TRANSLATE_TOKEN
-      },
-      body: JSON.stringify({ text: koreanNotice, targets })
-    });
-
-    if(!resp.ok){
-      const t = await resp.text().catch(()=> "");
-      throw new Error(`WORKER_HTTP_${resp.status}: ${t}`);
-    }
-    const data = await resp.json().catch(()=> ({}));
-    const translations = data?.translations;
-    if(!translations || typeof translations !== "object") throw new Error("WORKER_BAD_RESPONSE");
-    return translations;
-  }
-
-  // =========================
-  // UI glue
-  // =========================
-  let savedResults = {};
-  const tabH = document.getElementById("tabH");
-  const tabB = document.getElementById("tabB");
-  const resArea = document.getElementById("resArea");
-  const loading = document.getElementById("loading");
-  const noticeType = document.getElementById("noticeType");
-  const dtFormat = document.getElementById("dtFormat");
-
-  function setTranslatePill(text, mode){
-    const el = document.getElementById("pillTranslate");
-    if(!el) return;
-    el.textContent = text;
-    el.classList.remove("ok","info","warn","bad");
-    el.classList.add(mode || "warn");
-  }
-
-  function renderTabs(langs){
-    tabH.innerHTML="";
-    langs.forEach((l,i)=>{
-      const b=document.createElement("button");
-      b.className="tab-btn"+(i===0?" active":"");
-      b.innerText=l;
-      b.onclick=()=>{
-        document.querySelectorAll(".tab-btn").forEach(t=>t.classList.remove("active"));
-        b.classList.add("active");
-        updateDisplay(l);
-      };
-      tabH.appendChild(b);
-    });
-    resArea.style.display="block";
-    updateDisplay(langs[0]);
-  }
-
-  function updateDisplay(lang){
-    tabB.innerText = savedResults?.[lang]?.notice || "";
-  }
-
-  function copyAll(){
-    navigator.clipboard.writeText(tabB.innerText);
-    alert("복사되었습니다.");
-  }
-  window.copyAll = copyAll;
-
-  function syncMaintSubtitle(){
-    const kind = document.getElementById("maintKind").value;
-    const status = document.getElementById("maintStatus").value === "planned" ? "진행 예정 안내" : "진행 안내";
-    document.getElementById("maintSubtitle").value = `${kind} 점검 ${status}`;
-  }
-  window.syncMaintSubtitle = syncMaintSubtitle;
-
-  function toggleSections(){
-    const type = noticeType.value;
-    document.getElementById("maintSection").classList.toggle("hidden", type !== "maint");
-    document.getElementById("issueSection").classList.toggle("hidden", type !== "issue");
-    document.getElementById("doneSection").classList.toggle("hidden", type !== "done");
-
-    document.getElementById("pillTemplate").textContent = "템플릿: " + noticeType.options[noticeType.selectedIndex].text;
-  }
-
-  noticeType.addEventListener("change", toggleSections);
-  toggleSections();
-
-  // safe wrapper
-  window.__safeGenerate = function(){
-    try{
-      const r = window.generate();
-      if(r && typeof r.then === 'function'){
-        r.catch((e)=>{
-          console.error(e);
-          alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
-        });
-      }
-      return r;
-    }catch(e){
-      console.error(e);
-      alert('공지 생성 로직에서 오류가 발생했습니다. (F12 콘솔을 확인해 주세요)');
-      return false;
-    }
+  // ---------- Helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const nowLocalISO = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,16);
   };
 
-  async function generate(){
-    const langs = [...document.querySelectorAll(".lang:checked")].map(e=>e.value);
-    if(!langs.length) return alert("언어를 1개 이상 선택해 주세요.");
-
-    const type = noticeType.value;
-    const dtFmt = dtFormat.value;
-
-    loading.style.display="block";
-    resArea.style.display="none";
-    setTranslatePill("번역: 준비", "warn");
-
-    const payload = {
-      type,
-      userTitle: (document.getElementById("userTitle").value.trim() || "이용자 여러분"),
-      speaker: (document.getElementById("speakerName").value.trim() || "운영팀"),
-      dtFormat: dtFmt,
-      langs,
-      maint: {},
-      issue: {},
-      done: {}
-    };
-
-    try{
-      if(type === "maint"){
-        const maintPurpose = document.getElementById("maintPurpose");
-        const maintStart = document.getElementById("maintStart");
-        const maintEnd = document.getElementById("maintEnd");
-        const maintKind = document.getElementById("maintKind");
-        const maintStatus = document.getElementById("maintStatus");
-        const maintSubtitle = document.getElementById("maintSubtitle");
-        const maintContent = document.getElementById("maintContent");
-        const impact = document.getElementById("impact");
-        const impactInclude = document.getElementById("impactInclude");
-        const fixVerb = document.getElementById("fixVerb");
-
-        if(!maintPurpose.value.trim()) return alert("점검 목적을 입력해 주세요.");
-        if(!maintStart.value || !maintEnd.value) return alert("점검 시작/종료 시간을 입력해 주세요.");
-
-        payload.maint = {
-          kind: maintKind.value,
-          status: maintStatus.value,
-          purpose: maintPurpose.value.trim(),
-          subtitle: cleanBracketTitle(maintSubtitle.value),
-          content: maintContent.value.trim(),
-          startRaw: maintStart.value,
-          endRaw: maintEnd.value,
-          windowText: `${formatDT(maintStart.value, dtFmt)} ~ ${formatDT(maintEnd.value, dtFmt)} ${diffText(maintStart.value, maintEnd.value)}`.trim(),
-          impact: (impact ? impact.value.trim() : ""),
-          impactInclude: impactInclude.value,
-          fixVerb: fixVerb ? fixVerb.value : "수정"
-        };
-        payload.noticeType = "maint";
-      }
-
-      if(type === "issue"){
-        const issueDt = document.getElementById("issueDt");
-        const issueText = document.getElementById("issueText");
-        const impactSure = document.getElementById("impactSure");
-
-        if(!issueDt.value) return alert("발생/확인 일시를 입력해 주세요.");
-        if(!issueText.value.trim()) return alert("현상 입력을 작성해 주세요.");
-
-        payload.issue = {
-          dtRaw: issueDt.value,
-          text: issueText.value.trim(),
-          apology: (impactSure ? impactSure.value : "yes")
-        };
-        payload.noticeType = "issue";
-      }
-
-      if(type === "done"){
-        const doneIssue = document.getElementById("doneIssue");
-        const doneDt = document.getElementById("doneDt");
-        const doneExtra = document.getElementById("doneExtra");
-        const doneImpactSure = document.getElementById("doneImpactSure");
-
-        const di = (doneIssue ? doneIssue.value : "").trim();
-        const dd = (doneDt ? doneDt.value : "");
-        if(!di) return alert("조치 대상 현상을 입력해 주세요.");
-
-        payload.done = {
-          issue: di,
-          dtRaw: dd,
-          extra: (doneExtra ? doneExtra.value : "").trim(),
-          impactSure: (doneImpactSure ? doneImpactSure.value : "yes")
-        };
-        payload.noticeType = "done";
-      }
-
-      // KO always
-      const koText = buildKOText(payload);
-
-      savedResults = {};
-      if(langs.includes("KO")) savedResults.KO = { notice: koText };
-
-      const targets = langs.filter(l => l !== "KO");
-      if(targets.length){
-        try{
-          setTranslatePill("번역: Worker", "info");
-          const translations = await translateViaWorker(koText, targets);
-          for(const t of targets){
-            const tr = safeToText(translations[t] ?? "").trim();
-            savedResults[t] = { notice: tr || ("번역 생성에 실패했습니다. (Worker 응답 확인)\n\n" + koText) };
-          }
-          setTranslatePill("번역: 완료", "ok");
-        }catch(e){
-          console.error(e);
-          setTranslatePill("번역: 실패(KO만)", "bad");
-          for(const t of targets){
-            savedResults[t] = { notice: "번역 생성에 실패했습니다. (네트워크/Worker/Token을 확인해 주세요)\n\n" + koText };
-          }
-        }
-      }else{
-        setTranslatePill("번역: 미사용", "warn");
-      }
-
-      renderTabs(langs);
-    }catch(e){
-      console.error(e);
-      alert("생성 실패: " + (e?.message || e));
-    }finally{
-      loading.style.display="none";
-    }
+  function setPill(text, kind) {
+    const pill = $("pillReady");
+    pill.textContent = text;
+    pill.className = "pill" + (kind ? (" " + kind) : "");
   }
 
-  window.generate = generate;
+  function setBoxStatus(lang, text, ok=true) {
+    const st = $("st" + lang);
+    st.textContent = text;
+    const box = $("box" + lang);
+    box.classList.toggle("err", !ok);
+  }
 
-  // init defaults
-  (function init(){
-    try{ syncMaintSubtitle(); }catch(e){}
-    setTranslatePill("번역: 준비", "warn");
+  function writeOut(lang, text) {
+    $("out" + lang).textContent = text || "";
+  }
 
-    const now = new Date();
-    const minutes = now.getMinutes();
-    const rounded = Math.round(minutes / 5) * 5;
-    now.setMinutes(rounded); now.setSeconds(0); now.setMilliseconds(0);
+  function logNet(obj) {
+    $("netlog").textContent = JSON.stringify(obj, null, 2);
+    $("stNET").textContent = new Date().toLocaleString();
+  }
 
-    const yyyy = now.getFullYear();
-    const mm = pad2(now.getMonth()+1);
-    const dd = pad2(now.getDate());
-    const hh = pad2(now.getHours());
-    const mi = pad2(now.getMinutes());
-    const cur = `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  function buildPrompt({salute, speaker, category, when, bodyKo, target}) {
+    // 필요하면 여기 템플릿을 더 고급화해도 됨
+    const whenText = when ? when.replace("T", " ") : "";
+    return [
+      `너는 게임 공지 번역가다.`,
+      `아래 한국어 공지를 ${target}로 자연스럽고 공손하게 번역하라.`,
+      `고유명사는 유지하고, 날짜/시간 포맷은 자연스럽게 유지하라.`,
+      ``,
+      `[공지정보]`,
+      `- 유저 호칭: ${salute}`,
+      `- 화자명: ${speaker}`,
+      `- 공지 유형: ${category}`,
+      `- 발생/확인 일시: ${whenText}`,
+      ``,
+      `[한국어 원문]`,
+      `${bodyKo}`.trim()
+    ].join("\n");
+  }
 
-    document.getElementById("issueDt").value = cur;
-    document.getElementById("doneDt").value = cur;
+  async function callWorkerTranslate(endpoint, token, payload) {
+    const headers = { "Content-Type": "application/json" };
+    if (token && token.trim()) headers["X-Translate-Token"] = token.trim();
 
-    const end = new Date(now.getTime() + 2*60*60*1000);
-    const em = pad2(end.getMonth()+1), ed = pad2(end.getDate()), eh = pad2(end.getHours()), eMi = pad2(end.getMinutes());
-    document.getElementById("maintStart").value = cur;
-    document.getElementById("maintEnd").value = `${end.getFullYear()}-${em}-${ed}T${eh}:${eMi}`;
-  })();
+    const reqInfo = { endpoint, headers, payload };
+    setPill("요청중...", "warn");
+
+    let res, text;
+    try {
+      res = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(payload) });
+      text = await res.text();
+    } catch (e) {
+      logNet({ request: reqInfo, networkError: String(e) });
+      throw new Error("NETWORK_ERROR: " + e.message);
+    }
+
+    // 기록
+    logNet({
+      request: reqInfo,
+      response: {
+        status: res.status,
+        statusText: res.statusText,
+        body: text
+      }
+    });
+
+    // JSON 파싱 시도
+    let json = null;
+    try { json = JSON.parse(text); } catch (_) {}
+
+    if (!res.ok) {
+      const msg = (json && (json.error?.message || json.error || json.message)) ? (json.error?.message || json.error || json.message) : text;
+      const err = new Error(`HTTP_${res.status}: ${msg}`);
+      err.status = res.status;
+      err.raw = text;
+      throw err;
+    }
+
+    // 성공 응답이 OpenAI/Groq 형태일 수도 있고, 단순 {text:""}일 수도 있음
+    return json || { raw: text };
+  }
+
+  function extractTextFromResponse(json) {
+    // 1) OpenAI/Groq chat.completions 형태
+    const c = json?.choices?.[0]?.message?.content;
+    if (typeof c === "string" && c.trim()) return c.trim();
+    // 2) 커스텀 형태
+    if (typeof json?.text === "string" && json.text.trim()) return json.text.trim();
+    if (typeof json?.translation === "string" && json.translation.trim()) return json.translation.trim();
+    // 3) fallback
+    return JSON.stringify(json, null, 2);
+  }
+
+  // ---------- Init ----------
+  $("when").value = nowLocalISO();
+  $("originChip").textContent = "Origin: " + location.origin;
+
+  // Restore session values (optional)
+  try {
+    const saved = sessionStorage.getItem("notice_safe_cfg");
+    if (saved) {
+      const cfg = JSON.parse(saved);
+      if (cfg.endpoint) $("endpoint").value = cfg.endpoint;
+      if (cfg.token) $("token").value = cfg.token;
+      $("remember").checked = true;
+    }
+  } catch(_) {}
+
+  $("remember").addEventListener("change", () => {
+    if (!$("remember").checked) {
+      sessionStorage.removeItem("notice_safe_cfg");
+    } else {
+      sessionStorage.setItem("notice_safe_cfg", JSON.stringify({
+        endpoint: $("endpoint").value.trim(),
+        token: $("token").value
+      }));
+    }
+  });
+
+  ["endpoint", "token"].forEach(id => {
+    $(id).addEventListener("input", () => {
+      if ($("remember").checked) {
+        sessionStorage.setItem("notice_safe_cfg", JSON.stringify({
+          endpoint: $("endpoint").value.trim(),
+          token: $("token").value
+        }));
+      }
+    });
+  });
+
+  // ---------- Main ----------
+  $("btnRun").addEventListener("click", async () => {
+    const endpoint = $("endpoint").value.trim();
+    const token = $("token").value; // password input
+
+    if (!endpoint) {
+      alert("Worker Translate Endpoint를 먼저 입력하세요.\n예: https://broad-shadow-26ac.kkwak2kg.workers.dev/translate");
+      return;
+    }
+
+    // UI values
+    const data = {
+      salute: $("salute").value.trim(),
+      speaker: $("speaker").value.trim(),
+      category: $("category").value,
+      when: $("when").value,
+      bodyKo: $("bodyKo").value.trim()
+    };
+
+    // Reset outputs
+    ["KO","EN","JA"].forEach(l => { writeOut(l, ""); setBoxStatus(l, "-", true); });
+    setPill("시작...", "warn");
+
+    // Always show KO as original (if selected)
+    const doKO = $("langKO").checked;
+    const doEN = $("langEN").checked;
+    const doJA = $("langJA").checked;
+
+    if (doKO) {
+      setBoxStatus("KO", "LOCAL", true);
+      writeOut("KO", data.bodyKo);
+    } else {
+      setBoxStatus("KO", "SKIP", true);
+      writeOut("KO", "");
+    }
+
+    const targets = [];
+    if (doEN) targets.push({ code:"EN", targetLabel:"English", modelHint:"auto" });
+    if (doJA) targets.push({ code:"JA", targetLabel:"Japanese", modelHint:"auto" });
+
+    if (targets.length === 0) {
+      setPill("완료 (번역 대상 없음)", "ok");
+      return;
+    }
+
+    // Sequential translate (simple + reliable)
+    for (const t of targets) {
+      try {
+        setBoxStatus(t.code, "REQUEST...", true);
+
+        // Payload: Worker 쪽이 어떤 포맷을 받는지 몰라서 호환성을 넓게 잡음.
+        // - 권장: Worker에서 { model, messages } 받는 형태라면 그대로 먹습니다.
+        const prompt = buildPrompt({ ...data, target: t.targetLabel });
+
+        const payload = {
+          // Worker가 Groq chat.completions 프록시라면 아래 형태가 가장 범용
+          model: "llama-3.1-8b-instant",
+          messages: [
+            { role: "system", content: "You are a helpful translation assistant." },
+            { role: "user", content: prompt }
+          ]
+        };
+
+        const json = await callWorkerTranslate(endpoint, token, payload);
+        const out = extractTextFromResponse(json);
+
+        setBoxStatus(t.code, "OK", true);
+        writeOut(t.code, out);
+      } catch (e) {
+        const st = e.status ? `ERR ${e.status}` : "ERR";
+        setBoxStatus(t.code, st, false);
+        writeOut(t.code, (e && e.message) ? e.message : String(e));
+
+        // 401이면 토큰 문제를 더 친절히 안내
+        if (e.status === 401) {
+          setPill("401: X-Translate-Token 누락/불일치", "bad");
+        } else if (e.status === 403) {
+          setPill("403: 서버/업스트림 거부(키/권한/CORS/토큰 등)", "bad");
+        } else {
+          setPill("오류 발생", "bad");
+        }
+      }
+    }
+
+    // Done
+    const anyErr = ["EN","JA"].some(l => $("box"+l).classList.contains("err"));
+    setPill(anyErr ? "완료(일부 실패)" : "완료", anyErr ? "warn" : "ok");
+  });
 </script>
 </body>
 </html>
