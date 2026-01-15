@@ -6,119 +6,71 @@
   <title>Professional Notice Master (vSafe)</title>
   <style>
     :root{
-      --bg:#0b1630;
-      --panel:#0f2147;
-      --panel2:#0b1a3a;
-      --line:rgba(255,255,255,.10);
-      --text:#e8f1ff;
-      --muted:rgba(232,241,255,.72);
-      --accent:#17d4ff;
-      --accent2:#35e08a;
-      --bad:#ff5a5a;
-      --warn:#ffcc66;
-      --ok:#7dffb2;
-      --chip:#0b1f44;
+      --bg:#0b1630; --line:rgba(255,255,255,.10);
+      --text:#e8f1ff; --muted:rgba(232,241,255,.72);
+      --accent:#17d4ff; --accent2:#35e08a;
+      --bad:#ff5a5a; --warn:#ffcc66; --ok:#7dffb2;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       --sans: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, sans-serif;
     }
     *{ box-sizing:border-box; }
     body{
-      margin:0;
-      font-family:var(--sans);
-      color:var(--text);
+      margin:0; font-family:var(--sans); color:var(--text);
       background:radial-gradient(1200px 600px at 40% 10%, #143b77 0%, #0b1630 55%, #071022 100%);
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      padding:24px;
+      min-height:100vh; display:flex; justify-content:center; padding:24px;
     }
     .wrap{ width:min(1200px,100%); }
-    h1{ margin:0 0 6px; font-size:22px; letter-spacing:.2px; }
+    h1{ margin:0 0 6px; font-size:22px; }
     .sub{ margin:0 0 16px; color:var(--muted); font-size:13px; line-height:1.5; }
+
     .banner{
       background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:12px 14px;
-      margin:10px 0 18px;
+      border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin:10px 0 18px;
     }
-    .banner .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:rgba(0,0,0,.15);
-      font-size:12px;
-      color:var(--muted);
+      display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
+      border:1px solid var(--line); background:rgba(0,0,0,.15);
+      font-size:12px; color:var(--muted);
     }
     .pill b{ color:var(--text); }
     .pill.ok{ border-color:rgba(125,255,178,.35); }
     .pill.warn{ border-color:rgba(255,204,102,.35); }
-    .grid{
-      display:grid;
-      grid-template-columns: 1.05fr 0.95fr;
-      gap:14px;
-    }
-    @media (max-width: 980px){
-      .grid{ grid-template-columns:1fr; }
-    }
+
+    .grid{ display:grid; grid-template-columns: 1.05fr 0.95fr; gap:14px; }
+    @media (max-width:980px){ .grid{ grid-template-columns:1fr; } }
+
     .card{
       background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-      border-radius:18px;
-      padding:14px;
+      border:1px solid var(--line); border-radius:18px; padding:14px;
       box-shadow:0 12px 30px rgba(0,0,0,.25);
+      position:relative; /* ✅ 레이어 기준점 */
+      overflow:hidden;   /* ✅ 이상한 absolute가 밖으로 튀어나와 덮는 것 방지 */
     }
-    .card h2{
-      margin:0 0 10px;
-      font-size:14px;
-      color:var(--text);
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
+    .card h2{ margin:0 0 10px; font-size:14px; }
+
     label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
     input, select, textarea{
-      width:100%;
-      padding:12px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.12);
-      outline:none;
-      background:rgba(0,0,0,.18);
-      color:var(--text);
-      font-size:14px;
+      width:100%; padding:12px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.12); outline:none;
+      background:rgba(0,0,0,.18); color:var(--text); font-size:14px;
+      position:relative; z-index:1;
     }
     textarea{ min-height:140px; resize:vertical; }
     input::placeholder, textarea::placeholder{ color:rgba(232,241,255,.45); }
-    .row2{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-    }
-    @media (max-width: 720px){
-      .row2{ grid-template-columns:1fr; }
-    }
-    .langs{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:8px;
-    }
+    .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media (max-width:720px){ .row2{ grid-template-columns:1fr; } }
+
+    .langs{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; position:relative; z-index:1; }
     .chk{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.12);
-      user-select:none;
+      display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.12);
+      user-select:none; position:relative; z-index:1;
     }
     .chk input{ width:16px; height:16px; }
-    .btn{
+
+    /* ✅ 버튼 클릭 안 되는 문제 대부분 여기로 해결됨 */
+    #runBtn{
       width:100%;
       margin-top:12px;
       padding:14px 16px;
@@ -130,33 +82,20 @@
       font-size:16px;
       background:linear-gradient(90deg, var(--accent), var(--accent2));
       box-shadow:0 10px 18px rgba(0,0,0,.22);
+      position:relative;
+      z-index:9999;          /* ✅ 최상단 */
+      pointer-events:auto;   /* ✅ 클릭 강제 */
     }
-    .btn:disabled{
-      cursor:not-allowed;
-      opacity:.55;
-      filter:saturate(.5);
-    }
-    .statusBar{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .statusDot{
-      width:8px; height:8px; border-radius:50%;
-      background:rgba(255,255,255,.35);
-    }
+    #runBtn:disabled{ cursor:not-allowed; opacity:.55; }
+
+    .statusBar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; position:relative; z-index:1; }
+    .statusDot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.35); }
     .statusText{ font-size:12px; color:var(--muted); }
-    .hint{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5; }
-    .rightGrid{
-      display:grid;
-      grid-template-columns:1fr 1fr 1fr;
-      gap:10px;
-    }
-    @media (max-width: 980px){
-      .rightGrid{ grid-template-columns:1fr; }
-    }
+    .hint{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5; position:relative; z-index:1; }
+
+    .rightGrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+    @media (max-width:980px){ .rightGrid{ grid-template-columns:1fr; } }
+
     .out{
       background:rgba(0,0,0,.20);
       border:1px solid rgba(255,255,255,.12);
@@ -164,33 +103,16 @@
       padding:10px;
       min-height:140px;
       position:relative;
+      z-index:0;
     }
-    .out h3{
-      margin:0 0 8px;
-      font-size:12px;
-      color:var(--muted);
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:8px;
-    }
+    .out h3{ margin:0 0 8px; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; }
     .badge{
-      font-size:11px;
-      padding:3px 8px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.18);
+      font-size:11px; padding:3px 8px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14); background:rgba(0,0,0,.18);
       color:var(--muted);
-      white-space:nowrap;
     }
-    .mono{
-      font-family:var(--mono);
-      font-size:12px;
-      white-space:pre-wrap;
-      word-break:break-word;
-      color:rgba(232,241,255,.90);
-      line-height:1.5;
-    }
+    .mono{ font-family:var(--mono); font-size:12px; white-space:pre-wrap; word-break:break-word; line-height:1.5; }
+
     .log{
       margin-top:10px;
       background:rgba(0,0,0,.22);
@@ -198,25 +120,21 @@
       border-radius:14px;
       padding:10px;
       min-height:250px;
+      position:relative;
+      z-index:0;
     }
-    .logTop{
-      display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
-      margin-bottom:8px;
-    }
+    .logTop{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
     .logTop b{ font-size:12px; color:var(--muted); }
     .smallBtn{
-      padding:8px 10px;
-      border-radius:12px;
+      padding:8px 10px; border-radius:12px;
       border:1px solid rgba(255,255,255,.16);
       background:rgba(0,0,0,.18);
       color:var(--text);
       cursor:pointer;
       font-size:12px;
+      position:relative;
+      z-index:1;
     }
-    .smallBtn:hover{ filter:brightness(1.05); }
-    .err{ color:var(--bad); }
-    .okc{ color:var(--ok); }
-    .warnc{ color:var(--warn); }
   </style>
 </head>
 
@@ -225,41 +143,35 @@
     <h1>Professional Notice Master (vSafe)</h1>
     <p class="sub">
       브라우저에 Groq API Key를 저장하지 않는 방식입니다.<br>
-      번역은 Cloudflare Worker의 <b>/translate</b> 엔드포인트로 요청되며, 필요 시 <b>X-Translate-Token</b> / <b>Authorization</b>을 추가합니다.
+      번역은 Cloudflare Worker의 <b>/translate</b> 엔드포인트로 요청됩니다.
     </p>
 
     <div class="banner">
       <div class="row">
-        <span class="pill ok">✅ <b>안전 포인트</b>: GitHub Pages 코드에 토큰/키 하드코딩 없음</span>
-        <span class="pill warn">⚠️ <b>주의</b>: 헤더 값에 한글/특수문자(비ASCII)가 들어가면 브라우저가 요청을 막습니다</span>
+        <span class="pill ok">✅ <b>안전</b>: GitHub Pages에 토큰 하드코딩 없음</span>
+        <span class="pill warn">⚠️ <b>주의</b>: 헤더에 한글/비ASCII가 들어가면 브라우저가 요청을 막습니다</span>
       </div>
     </div>
 
     <div class="grid">
-      <!-- LEFT -->
       <div class="card">
         <h2>1) 연결 설정</h2>
 
-        <label for="endpoint">Worker Translate Endpoint (예: https://xxxx.workers.dev/translate)</label>
+        <label for="endpoint">Worker Translate Endpoint</label>
         <input id="endpoint" placeholder="https://YOUR-WORKER.workers.dev/translate" />
 
-        <label for="translateToken">Translate Token (Worker의 TRANSLATE_TOKEN과 동일 / 없으면 비워도 됨)</label>
-        <input id="translateToken" placeholder="(선택) X-Translate-Token 값" />
+        <label for="translateToken">Translate Token (X-Translate-Token)</label>
+        <input id="translateToken" placeholder="예: NOTICE_INTERNAL_V1" />
 
-        <label for="sharedToken">Worker Shared Token (Worker가 Authorization을 요구할 때만 필요)</label>
-        <input id="sharedToken" placeholder="(선택) Authorization: Bearer ..." />
+        <label for="sharedToken">Worker Shared Token (Authorization 필요할 때만)</label>
+        <input id="sharedToken" placeholder="Bearer 없이 토큰만 넣어도 됨" />
 
         <div class="statusBar">
-          <div class="chk" style="padding:6px 10px;">
+          <label class="chk" style="padding:6px 10px;">
             <input id="remember" type="checkbox" />
-            <span style="font-size:12px;color:var(--muted);">토큰/엔드포인트 세션 저장</span>
-          </div>
+            <span style="font-size:12px;color:var(--muted);">세션 저장</span>
+          </label>
           <span class="pill"><span class="statusDot" id="dot"></span><span class="statusText" id="statusText">대기중</span></span>
-        </div>
-
-        <div class="hint">
-          팁: 401이면 보통 <b>X-Translate-Token</b> 또는 <b>Authorization</b> 불일치입니다.<br>
-          400이면 보통 payload에 <b>text</b>가 없어서입니다.
         </div>
 
         <hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">
@@ -294,7 +206,7 @@
         </div>
 
         <label for="koText">현상 입력(한국어 원문)</label>
-        <textarea id="koText" placeholder="한국어 원문을 입력하세요">접속 불가 현상</textarea>
+        <textarea id="koText">접속 불가 현상</textarea>
 
         <label>언어 선택</label>
         <div class="langs">
@@ -302,26 +214,20 @@
           <label class="chk"><input id="langJA" type="checkbox"> JA</label>
         </div>
 
-        <button id="runBtn" class="btn">번역/생성</button>
-        <div class="hint">디버그: 아래 결과/로그 박스에 HTTP status와 에러 원문이 표시됩니다.</div>
+        <button id="runBtn">번역/생성</button>
+
+        <div class="hint">
+          <b>버튼 클릭 테스트:</b> 클릭하면 먼저 alert가 뜹니다.<br>
+          alert도 안 뜨면 “클릭이 덮이고 있음”이 확정입니다.
+        </div>
       </div>
 
-      <!-- RIGHT -->
       <div class="card">
         <h2>3) 결과</h2>
         <div class="rightGrid">
-          <div class="out">
-            <h3>KO <span class="badge" id="badgeKO">LOCAL</span></h3>
-            <div class="mono" id="outKO"></div>
-          </div>
-          <div class="out">
-            <h3>EN <span class="badge" id="badgeEN">-</span></h3>
-            <div class="mono" id="outEN"></div>
-          </div>
-          <div class="out">
-            <h3>JA <span class="badge" id="badgeJA">-</span></h3>
-            <div class="mono" id="outJA"></div>
-          </div>
+          <div class="out"><h3>KO <span class="badge" id="badgeKO">LOCAL</span></h3><div class="mono" id="outKO"></div></div>
+          <div class="out"><h3>EN <span class="badge" id="badgeEN">-</span></h3><div class="mono" id="outEN"></div></div>
+          <div class="out"><h3>JA <span class="badge" id="badgeJA">-</span></h3><div class="mono" id="outJA"></div></div>
         </div>
 
         <h2 style="margin-top:14px;">4) 네트워크 로그</h2>
@@ -330,7 +236,6 @@
             <b>Last Request / Response</b>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button class="smallBtn" id="btnClear">로그 지우기</button>
-              <button class="smallBtn" id="btnTest">연결 테스트 (OPTIONS/POST)</button>
             </div>
           </div>
           <div class="mono" id="netLog"></div>
@@ -340,322 +245,204 @@
   </div>
 
 <script>
-/** ========= Utils ========= **/
-function nowKST() {
-  try {
-    return new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
-  } catch {
-    return new Date().toLocaleString("ko-KR");
-  }
-}
-function setStatus(kind, text){
-  const dot = document.getElementById("dot");
-  const el  = document.getElementById("statusText");
-  el.textContent = text || "";
-  if(kind === "ok") dot.style.background = "var(--ok)";
-  else if(kind === "bad") dot.style.background = "var(--bad)";
-  else if(kind === "warn") dot.style.background = "var(--warn)";
-  else dot.style.background = "rgba(255,255,255,.35)";
+/* ✅ JS 실행 여부 확인용 플래그 */
+window.__VSAFE_LOADED__ = true;
+
+function nowKST(){
+  try{ return new Date().toLocaleString("ko-KR",{timeZone:"Asia/Seoul"}); }
+  catch{ return new Date().toLocaleString("ko-KR"); }
 }
 function logLine(s){
   const net = document.getElementById("netLog");
   net.textContent = `[${nowKST()}] ${s}\n` + net.textContent;
 }
-function clearLog(){
-  document.getElementById("netLog").textContent = "";
+function setStatus(kind, text){
+  const dot = document.getElementById("dot");
+  const el  = document.getElementById("statusText");
+  el.textContent = text || "";
+  dot.style.background =
+    kind==="ok" ? "var(--ok)" :
+    kind==="bad" ? "var(--bad)" :
+    kind==="warn" ? "var(--warn)" : "rgba(255,255,255,.35)";
 }
 function isAscii(str){
-  // 브라우저 fetch header 값은 ISO-8859-1 범위를 요구하는 경우가 많아,
-  // 안전하게 ASCII(0x20~0x7E)만 허용합니다.
-  for (let i=0;i<str.length;i++){
-    const c = str.charCodeAt(i);
-    if (c < 0x20 || c > 0x7E) return false;
+  for(let i=0;i<str.length;i++){
+    const c=str.charCodeAt(i);
+    if(c<0x20||c>0x7E) return false;
   }
   return true;
 }
 function normalizeEndpoint(url){
-  const u = (url || "").trim();
-  if (!u) return "";
-  return u.replace(/\/+$/,""); // trailing slash 제거
+  const u=(url||"").trim();
+  if(!u) return "";
+  return u.replace(/\/+$/,"");
 }
 function readUI(){
-  const endpoint = normalizeEndpoint(document.getElementById("endpoint").value);
-  const translateToken = (document.getElementById("translateToken").value || "").trim();
-  const sharedToken = (document.getElementById("sharedToken").value || "").trim();
-  const remember = document.getElementById("remember").checked;
-
-  const userCall = (document.getElementById("userCall").value || "").trim();
-  const speaker = (document.getElementById("speaker").value || "").trim();
-  const type = document.getElementById("type").value;
-  const dt = document.getElementById("dt").value; // yyyy-mm-ddThh:mm
-  const koText = (document.getElementById("koText").value || "").trim();
-
-  const wantEN = document.getElementById("langEN").checked;
-  const wantJA = document.getElementById("langJA").checked;
-
-  return { endpoint, translateToken, sharedToken, remember, userCall, speaker, type, dt, koText, wantEN, wantJA };
+  return {
+    endpoint: normalizeEndpoint(document.getElementById("endpoint").value),
+    translateToken: (document.getElementById("translateToken").value||"").trim(),
+    sharedToken: (document.getElementById("sharedToken").value||"").trim(),
+    remember: document.getElementById("remember").checked,
+    userCall: (document.getElementById("userCall").value||"").trim(),
+    speaker: (document.getElementById("speaker").value||"").trim(),
+    type: document.getElementById("type").value,
+    dt: document.getElementById("dt").value,
+    koText: (document.getElementById("koText").value||"").trim(),
+    wantEN: document.getElementById("langEN").checked,
+    wantJA: document.getElementById("langJA").checked,
+  };
 }
-function saveSession(state){
-  if(!state.remember) return;
+function saveSession(s){
+  if(!s.remember) return;
   try{
-    sessionStorage.setItem("vSafe.endpoint", state.endpoint);
-    sessionStorage.setItem("vSafe.translateToken", state.translateToken);
-    sessionStorage.setItem("vSafe.sharedToken", state.sharedToken);
+    sessionStorage.setItem("vSafe.endpoint", s.endpoint);
+    sessionStorage.setItem("vSafe.translateToken", s.translateToken);
+    sessionStorage.setItem("vSafe.sharedToken", s.sharedToken);
     sessionStorage.setItem("vSafe.remember", "1");
   }catch{}
 }
 function loadSession(){
   try{
-    const remember = sessionStorage.getItem("vSafe.remember") === "1";
-    if(!remember) return;
+    const r = sessionStorage.getItem("vSafe.remember")==="1";
+    if(!r) return;
     document.getElementById("remember").checked = true;
-    document.getElementById("endpoint").value = sessionStorage.getItem("vSafe.endpoint") || "";
-    document.getElementById("translateToken").value = sessionStorage.getItem("vSafe.translateToken") || "";
-    document.getElementById("sharedToken").value = sessionStorage.getItem("vSafe.sharedToken") || "";
+    document.getElementById("endpoint").value = sessionStorage.getItem("vSafe.endpoint")||"";
+    document.getElementById("translateToken").value = sessionStorage.getItem("vSafe.translateToken")||"";
+    document.getElementById("sharedToken").value = sessionStorage.getItem("vSafe.sharedToken")||"";
   }catch{}
 }
-function setBadge(id, text){
-  document.getElementById(id).textContent = text;
-}
 
-/** ========= Translation Logic ========= **/
-function buildPrompt({userCall, speaker, type, dt, koText}, targetLang){
-  // dt: "2026-01-15T18:47"
-  const dtPretty = dt ? dt.replace("T"," ") : "";
-  const langName = targetLang === "en" ? "English" : (targetLang === "ja" ? "日本語" : targetLang);
-
+function buildPrompt(info, targetLang){
+  const dtPretty = info.dt ? info.dt.replace("T"," ") : "";
+  const langName = targetLang==="en" ? "English" : "日本語";
   return [
-    `너는 게임 공지 번역가다.`,
+    "너는 게임 공지 번역가다.",
     `아래 한국어 공지를 ${langName}로 자연스럽고 공손하게 번역하라.`,
-    `고유명사는 유지하고, 날짜/시간 포맷은 자연스럽게 유지하라.`,
-    ``,
-    `[공지정보]`,
-    `- 유저 호칭: ${userCall || "-"}`,
-    `- 화자명: ${speaker || "-"}`,
-    `- 공지 유형: ${type || "-"}`,
-    `- 발생/확인 일시: ${dtPretty || "-"}`,
-    ``,
-    `[한국어 원문]`,
-    koText || ""
+    "고유명사는 유지하고, 날짜/시간 포맷은 자연스럽게 유지하라.",
+    "",
+    "[공지정보]",
+    `- 유저 호칭: ${info.userCall||"-"}`,
+    `- 화자명: ${info.speaker||"-"}`,
+    `- 공지 유형: ${info.type||"-"}`,
+    `- 발생/확인 일시: ${dtPretty||"-"}`,
+    "",
+    "[한국어 원문]",
+    info.koText||""
   ].join("\n");
 }
 
-async function callWorkerTranslate({endpoint, translateToken, sharedToken}, {text, targetLang}){
-  // 헤더 구성 (안전)
-  const headers = { "Content-Type": "application/json" };
+async function callWorker(endpoint, translateToken, sharedToken, text, targetLang){
+  const headers = { "Content-Type":"application/json" };
 
-  if (translateToken) {
-    if (!isAscii(translateToken)) {
-      throw new Error("X-Translate-Token 값에 한글/비ASCII 문자가 포함되어 있어 브라우저가 헤더를 거부합니다. (영문/숫자/기호만)");
-    }
+  if(translateToken){
+    if(!isAscii(translateToken)) throw new Error("X-Translate-Token에 한글/비ASCII가 포함되어 요청이 막힘");
     headers["X-Translate-Token"] = translateToken;
   }
-
-  if (sharedToken) {
-    if (!isAscii(sharedToken)) {
-      throw new Error("Worker Shared Token 값에 한글/비ASCII 문자가 포함되어 있어 브라우저가 헤더를 거부합니다. (영문/숫자/기호만)");
-    }
-    // 사용자가 토큰만 넣든, Bearer 포함해서 넣든 둘 다 지원
-    const val = sharedToken.toLowerCase().startsWith("bearer ") ? sharedToken : `Bearer ${sharedToken}`;
-    headers["Authorization"] = val;
+  if(sharedToken){
+    if(!isAscii(sharedToken)) throw new Error("Authorization 토큰에 한글/비ASCII가 포함되어 요청이 막힘");
+    headers["Authorization"] = sharedToken.toLowerCase().startsWith("bearer ")
+      ? sharedToken : `Bearer ${sharedToken}`;
   }
 
-  const payload = { text, targetLang }; // ✅ Worker 최소 포맷
-  const reqInfo = {
+  const payload = { text, targetLang };
+
+  logLine("REQUEST " + JSON.stringify({
     endpoint,
-    headers: Object.assign({}, headers, {
-      ...(headers.Authorization ? { Authorization: "Bearer ***" } : {})
-    }),
+    headers: { ...headers, ...(headers.Authorization ? { Authorization:"Bearer ***" } : {}) },
     payload
-  };
-  logLine("REQUEST: " + JSON.stringify(reqInfo, null, 2));
-
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    mode: "cors",
-  });
-
-  const ct = (res.headers.get("content-type") || "");
-  let bodyText = "";
-  let bodyJson = null;
-
-  if (ct.includes("application/json")) {
-    try { bodyJson = await res.json(); }
-    catch { bodyText = await res.text(); }
-  } else {
-    bodyText = await res.text();
-  }
-
-  logLine("RESPONSE: " + JSON.stringify({
-    status: res.status,
-    statusText: res.statusText,
-    contentType: ct,
-    body: bodyJson ?? bodyText
   }, null, 2));
 
-  if (!res.ok) {
-    const msg = bodyJson?.error || bodyJson?.message || bodyText || res.statusText || "Request failed";
-    const e = new Error(`HTTP_${res.status}: ${msg}`);
-    e.httpStatus = res.status;
-    e.responseBody = bodyJson ?? bodyText;
-    throw e;
+  const res = await fetch(endpoint, {
+    method:"POST",
+    headers,
+    body: JSON.stringify(payload),
+    mode:"cors",
+  });
+
+  const ct = res.headers.get("content-type")||"";
+  const body = ct.includes("application/json") ? await res.json().catch(()=>null) : await res.text();
+
+  logLine("RESPONSE " + JSON.stringify({
+    status: res.status,
+    ct,
+    body
+  }, null, 2));
+
+  if(!res.ok){
+    const msg = body?.error || body?.message || (typeof body==="string" ? body : "") || res.statusText;
+    throw new Error(`HTTP_${res.status}: ${msg}`);
   }
 
-  // 성공 응답 형태가 제각각일 수 있으니 최대한 유연하게 파싱
-  // 가능한 경우:
-  // - { translation: "..." }
-  // - { text: "..." }
-  // - { choices:[{message:{content:"..."}}]} (OpenAI 스타일)
-  if (bodyJson) {
-    if (typeof bodyJson.translation === "string") return bodyJson.translation;
-    if (typeof bodyJson.text === "string") return bodyJson.text;
-    const c = bodyJson?.choices?.[0]?.message?.content;
-    if (typeof c === "string") return c;
-    return JSON.stringify(bodyJson, null, 2);
+  if(body && typeof body==="object"){
+    return body.translation || body.text || body?.choices?.[0]?.message?.content || JSON.stringify(body, null, 2);
   }
-  return bodyText;
+  return body;
 }
 
 async function run(){
-  const state = readUI();
-
-  // KO 박스는 로컬 표시
-  document.getElementById("outKO").textContent = state.koText || "";
-  setBadge("badgeKO", "LOCAL");
-
-  // 기본 검증
-  if (!state.endpoint) {
-    setStatus("bad", "엔드포인트가 비었습니다");
-    logLine("ERROR: endpoint empty");
-    return;
-  }
-  if (!state.endpoint.includes("/translate")) {
-    setStatus("warn", "엔드포인트에 /translate가 없어요 (그래도 시도는 함)");
-  } else {
-    setStatus("", "요청 준비");
-  }
-
-  if (!state.koText) {
-    setStatus("bad", "한국어 원문(text)이 비었습니다");
-    logLine("ERROR: text empty");
-    return;
-  }
-
-  saveSession(state);
-
-  // 버튼/뱃지 초기화
-  setBadge("badgeEN", state.wantEN ? "RUN" : "-");
-  setBadge("badgeJA", state.wantJA ? "RUN" : "-");
+  const s = readUI();
+  document.getElementById("outKO").textContent = s.koText || "";
   document.getElementById("outEN").textContent = "";
   document.getElementById("outJA").textContent = "";
 
-  const jobs = [];
-  if (state.wantEN) jobs.push({ lang:"en", outId:"outEN", badgeId:"badgeEN" });
-  if (state.wantJA) jobs.push({ lang:"ja", outId:"outJA", badgeId:"badgeJA" });
+  if(!s.endpoint){ setStatus("bad","엔드포인트 비었음"); logLine("ERROR endpoint empty"); return; }
+  if(!s.koText){ setStatus("bad","원문(text) 비었음"); logLine("ERROR text empty"); return; }
 
-  if (jobs.length === 0){
-    setStatus("warn", "번역 언어를 선택하세요");
-    return;
-  }
+  saveSession(s);
 
-  setStatus("", "요청 중...");
+  setStatus("warn","요청 중...");
   const btn = document.getElementById("runBtn");
   btn.disabled = true;
 
   try{
-    for (const job of jobs){
-      const prompt = buildPrompt(state, job.lang);
-      const result = await callWorkerTranslate(
-        { endpoint: state.endpoint, translateToken: state.translateToken, sharedToken: state.sharedToken },
-        { text: prompt, targetLang: job.lang }
-      );
-      document.getElementById(job.outId).textContent = result;
-      setBadge(job.badgeId, "OK");
+    if(s.wantEN){
+      const prompt = buildPrompt(s, "en");
+      const out = await callWorker(s.endpoint, s.translateToken, s.sharedToken, prompt, "en");
+      document.getElementById("outEN").textContent = out;
     }
-    setStatus("ok", "완료");
+    if(s.wantJA){
+      const prompt = buildPrompt(s, "ja");
+      const out = await callWorker(s.endpoint, s.translateToken, s.sharedToken, prompt, "ja");
+      document.getElementById("outJA").textContent = out;
+    }
+    setStatus("ok","완료");
   }catch(e){
-    const msg = (e && e.message) ? e.message : String(e);
-    setStatus("bad", "실패: " + msg);
-    // 배지에 에러 상태 표기
-    if (state.wantEN) setBadge("badgeEN", "ERR");
-    if (state.wantJA) setBadge("badgeJA", "ERR");
-    logLine("ERROR: " + msg);
+    setStatus("bad", "실패: " + (e?.message || e));
+    logLine("ERROR " + (e?.message || e));
   }finally{
     btn.disabled = false;
   }
 }
 
-/** ========= Connection Test ========= **/
-async function testConnection(){
-  const state = readUI();
-  if (!state.endpoint){
-    setStatus("bad", "엔드포인트가 비었습니다");
-    return;
-  }
-  setStatus("", "테스트 중...");
-  try{
-    // OPTIONS preflight 느낌으로 한 번
-    logLine("TEST: OPTIONS " + state.endpoint);
-    await fetch(state.endpoint, { method:"OPTIONS", mode:"cors" });
-
-    // 실제 POST도 한 번 (최소 payload)
-    const result = await callWorkerTranslate(
-      { endpoint: state.endpoint, translateToken: state.translateToken, sharedToken: state.sharedToken },
-      { text: "ping", targetLang: "en" }
-    );
-    logLine("TEST OK: " + (result?.slice?.(0,120) ?? result));
-    setStatus("ok", "테스트 OK");
-  }catch(e){
-    const msg = e?.message ? e.message : String(e);
-    setStatus("bad", "테스트 실패: " + msg);
-    logLine("TEST ERROR: " + msg);
-  }
-}
-
-/** ========= Boot ========= **/
 document.addEventListener("DOMContentLoaded", () => {
-  // datetime-local 기본값: 현재(로컬)
+  // datetime-local 기본값
   const dt = document.getElementById("dt");
-  if (dt && !dt.value){
-    const d = new Date();
-    const pad = n => String(n).padStart(2,"0");
+  if(dt && !dt.value){
+    const d = new Date(); const pad=n=>String(n).padStart(2,"0");
     dt.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   loadSession();
+  document.getElementById("outKO").textContent = document.getElementById("koText").value || "";
 
   const btn = document.getElementById("runBtn");
-  const btnClear = document.getElementById("btnClear");
-  const btnTest = document.getElementById("btnTest");
 
-  if (!btn){
-    console.error("runBtn not found");
-    return;
-  }
-
-  // 클릭 이벤트 확실히 바인딩
+  // ✅ 클릭이 되는지 자체를 먼저 확실히 보여주기 위한 alert
   btn.addEventListener("click", (ev) => {
     ev.preventDefault();
+    alert("버튼 클릭 이벤트는 정상 연결됨 ✅ (이 메시지가 뜨면 클릭은 되고 있어요)");
+    logLine("CLICK: runBtn");
     run();
   });
 
-  btnClear.addEventListener("click", (ev) => {
+  document.getElementById("btnClear").addEventListener("click", (ev) => {
     ev.preventDefault();
-    clearLog();
+    document.getElementById("netLog").textContent = "";
     logLine("로그 초기화");
   });
 
-  btnTest.addEventListener("click", (ev) => {
-    ev.preventDefault();
-    testConnection();
-  });
-
-  // 초기 상태
-  document.getElementById("outKO").textContent = document.getElementById("koText").value || "";
   setStatus("", "대기중");
-  logLine("UI loaded, runBtn bound OK");
+  logLine("UI loaded / runBtn bound OK");
 });
 </script>
 </body>
